@@ -1,5 +1,5 @@
 import { InteractionUI } from '../ui/interaction-ui.js';
-import { Food, INTERACTION_CONFIG } from '../objects/food.js';
+import { Food } from '../objects/food.js';
 import { Bowl } from '../objects/bowl.js';
 
 export class InteractionManager {
@@ -35,7 +35,7 @@ export class InteractionManager {
     }
 
     update(deltaTime) {
-        if (!this.player || !this.player.camera) return;
+        if (!this.player?.camera) return;
 
         // Update carried food position
         if (this.carriedFood) {
@@ -65,12 +65,7 @@ export class InteractionManager {
         // Update food highlights
         this.foodItems.forEach(food => {
             if (!food.isConsumed && !food.isPickedUp) {
-                const canPickup = Food.canPickup(
-                    this.player.camera,
-                    this.player.camera.position,
-                    food.position,
-                    food.model
-                );
+                const canPickup = Food.canPickup(this.player.camera, food.model);
                 food.setHighlight(canPickup);
                 if (food.isHighlighted) {
                     food.updateHighlight(deltaTime);
@@ -92,9 +87,7 @@ export class InteractionManager {
     }
 
     handleKeyPress(event) {
-        if (event.key.toLowerCase() !== 'e' || !this.player || !this.player.camera) return;
-
-        console.log('E key pressed, carrying food:', !!this.carriedFood);
+        if (event.key.toLowerCase() !== 'e' || !this.player?.camera) return;
 
         if (this.carriedFood) {
             // Try to place in nearest bowl
@@ -103,7 +96,6 @@ export class InteractionManager {
                 if (bowl.canAcceptFood() && 
                     Bowl.canInteract(this.player.camera.position, bowl.position)) {
                     placed = bowl.addFood(this.carriedFood);
-                    console.log('Attempted to place food in bowl:', placed);
                     if (placed) break;
                 }
             }
@@ -113,27 +105,17 @@ export class InteractionManager {
                 const dropPos = this.player.camera.position.clone();
                 dropPos.y = 0;
                 this.carriedFood.drop(dropPos);
-                console.log('Dropped food on ground');
             }
             
             this.carriedFood = null;
         } else {
             // Try to pick up nearest food
-            console.log('Attempting to find nearest food');
             const nearestFood = Food.findBestTargetFood(this.player.camera, this.foodItems);
 
-            console.log('Found nearest food:', nearestFood ? nearestFood.model.name : 'none');
-
             if (nearestFood && !nearestFood.isConsumed && !nearestFood.isPickedUp) {
-                console.log('Attempting pickup');
                 if (nearestFood.pickup()) {
                     this.carriedFood = nearestFood;
-                    console.log('Successfully picked up food');
-                } else {
-                    console.log('Pickup failed');
                 }
-            } else {
-                console.log('No valid food to pick up');
             }
         }
     }

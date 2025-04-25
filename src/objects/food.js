@@ -24,12 +24,11 @@ export const FOOD_TYPES = {
 };
 
 export const INTERACTION_CONFIG = {
-    pickupRange: 0.6,     // Maximum distance for pickup (0.6 meters)
+    pickupRange: 0.7,     // Maximum distance for pickup (0.6 meters)
     hoverHeight: 1.0,     // Height when being carried (at eye level)
     carryOffset: 1.0,     // Forward offset when being carried (1 meter in front)
     highlightColor: 0xFFFFFF,  // Color for interaction highlight
-    pulseSpeed: 2.0,      // Speed of highlight pulse
-    lookAtOffset: 0.1     // Offset above center for look-at point
+    pulseSpeed: 2.0      // Speed of highlight pulse
 };
 
 export class Food {
@@ -195,18 +194,19 @@ export class Food {
         return intersects[0].distance <= INTERACTION_CONFIG.pickupRange;
     }
 
-    static canPickup(camera, playerPosition, foodPosition, foodObject) {
-        // Just use isLookingAt which now includes the distance check
+    static canPickup(camera, foodObject) {
         return Food.isLookingAt(camera, foodObject);
     }
 
     static findBestTargetFood(camera, foods) {
-        // Find the closest food we can pick up
-        let closestFood = null;
-        let closestDistance = Infinity;
+        if (!this.scene) return null;
 
         const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+        
+        // Find the closest food we can pick up
+        let closestFood = null;
+        let closestDistance = Infinity;
 
         for (const food of foods) {
             if (food.isConsumed || food.isPickedUp) continue;
