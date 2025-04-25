@@ -30,6 +30,7 @@ export class Bowl {
         this.position = position;
         this.currentFood = null;
         this.isHighlighted = false;
+        this.cats = new Set(); // Store references to cats in the scene
         this.createMaterials();
         this.createModel();
     }
@@ -174,6 +175,10 @@ export class Bowl {
         
         this.currentFood = food;
         this.setHighlight(false);
+
+        // Notify all cats in the scene about the food
+        this.cats.forEach(cat => cat.notifyFoodAdded(this));
+        
         return true;
     }
 
@@ -213,5 +218,13 @@ export class Bowl {
         }
         
         return new THREE.Vector3(x, 0, z);
+    }
+
+    registerCat(cat) {
+        this.cats.add(cat);
+    }
+
+    unregisterCat(cat) {
+        this.cats.delete(cat);
     }
 } 
