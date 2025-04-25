@@ -1,5 +1,7 @@
+import * as THREE from 'three';
 import { createScene } from './src/scenes/mainScene.js';
 import { PlayerController } from './src/player/movement.js';
+import { Cat } from './src/objects/cat.js';
 
 // Initialize the scene
 const { scene, camera, renderer } = createScene();
@@ -17,6 +19,9 @@ const collidableObjects = scene.children.filter(child => {
 // Initialize player controller
 const playerController = new PlayerController(camera, renderer.domElement);
 
+// Initialize cat
+const cat = new Cat(scene, new THREE.Vector3(0, 0, -2)); // Start 2 meters in front of player
+
 // Time tracking for smooth movement
 let lastTime = performance.now();
 
@@ -31,6 +36,9 @@ function animate() {
     
     // Update player movement with collision detection
     playerController.update(deltaTime, collidableObjects);
+    
+    // Update cat behavior
+    cat.update(deltaTime);
     
     // Render the scene
     renderer.render(scene, camera);
