@@ -127,15 +127,36 @@ export class InteractionManager {
     }
 
     tryPlaceInBowl() {
-        for (const bowl of this.bowls) {
-            if (bowl.canAcceptFood() && Bowl.canInteract(this.player.camera.position, bowl.position)) {
-                const placed = bowl.addFood(this.carriedFood);
-                if (placed) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        if (!this.carriedFood) return false;
+
+        // Find the bowl we're looking at
+        const bowlInView = this.findBestTargetBowl();
+        if (!bowlInView) return false;
+
+        // Check if bowl can accept food
+        if (!bowlInView.canAcceptFood()) return false;
+
+        // Add food to bowl
+        bowlInView.addFood(this.carriedFood);
+        return true;
+    }
+
+    findBestTargetBowl() {
+        if (!this.bowls || this.bowls.length === 0) return null;
+
+        // Update raycaster with camera position and direction
+        this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.player.camera);
+
+        // Find all bowls that intersect with the ray
+        const intersects = this.raycaster.intersectObjects(this.bowls.map(bowl => bowl.model), true);
+        if (intersects.length === 0) return null;
+
+        // Get the closest bowl that was hit
+        const closestIntersect = intersects[0];
+        const bowlModel = closestIntersect.object.parent;
+        
+        // Find the Bowl instance that matches this model
+        return this.bowls.find(bowl => bowl.model === bowlModel);
     }
 
     update(deltaTime) {
@@ -152,14 +173,12 @@ export class InteractionManager {
             Food.findBestTargetFood(this.player.camera, this.foodItems) : 
             null;
 
+        // Use findBestTargetBowl for bowl detection when carrying food
         let nearestBowl = null;
         if (this.carriedFood) {
-            for (const bowl of this.bowls) {
-                if (bowl.canAcceptFood() && 
-                    Bowl.canInteract(this.player.camera.position, bowl.position)) {
-                    nearestBowl = bowl;
-                    break;
-                }
+            nearestBowl = this.findBestTargetBowl();
+            if (nearestBowl && !nearestBowl.canAcceptFood()) {
+                nearestBowl = null;
             }
         }
 
@@ -198,12 +217,18 @@ export class InteractionManager {
     }
 
     handleDrop() {
+        if (!this.carriedFood) return;
+
+        // Try to place in bowl first
         if (this.tryPlaceInBowl()) {
+            // Food was placed in bowl, consume it
+            this.carriedFood.consume();
             this.carriedFood = null;
             return;
         }
 
-        const dropPosition = this.calculateDropPosition();
+        // If not placed in bowl, drop on ground
+        const dropPosition = this.findDropPosition();
         this.carriedFood.drop(dropPosition);
         this.carriedFood = null;
     }

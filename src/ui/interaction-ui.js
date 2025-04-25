@@ -87,7 +87,7 @@ export class InteractionUI {
     updateInteractionPrompt(nearestFood, nearestBowl, isCarryingFood) {
         if (isCarryingFood) {
             if (nearestBowl) {
-                this.showPrompt('Press [E] to place food in bowl');
+                this.showPrompt('Press [E] to fill the bowl');
             } else {
                 this.showPrompt('Press [E] to drop food');
             }
