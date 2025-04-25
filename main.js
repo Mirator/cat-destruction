@@ -5,10 +5,14 @@ import { PlayerController } from './src/player/movement.js';
 const { scene, camera, renderer } = createScene();
 document.body.appendChild(renderer.domElement);
 
-// Get all walls from the scene
-const walls = scene.children.filter(child => 
-    child.isMesh && child !== scene.getObjectByName('floor')
-);
+// Get all collidable objects (walls and furniture)
+const collidableObjects = scene.children.filter(child => {
+    // Include all meshes except the floor
+    if (child.isMesh && child.name !== 'floor') return true;
+    // Include all groups (furniture)
+    if (child.isGroup) return true;
+    return false;
+});
 
 // Initialize player controller
 const playerController = new PlayerController(camera, renderer.domElement);
@@ -26,7 +30,7 @@ function animate() {
     lastTime = currentTime;
     
     // Update player movement with collision detection
-    playerController.update(deltaTime, walls);
+    playerController.update(deltaTime, collidableObjects);
     
     // Render the scene
     renderer.render(scene, camera);

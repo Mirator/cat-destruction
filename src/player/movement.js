@@ -15,7 +15,11 @@ export class PlayerController {
         // Movement parameters
         this.speed = 2.5; // meters per second (average walking speed)
         this.height = 1.7; // player height in meters
-        this.collisionRadius = 0.3; // collision radius in meters
+        this.bodyRadius = 0.25; // reduced from 0.3
+        
+        // Player body parameters
+        this.bodyHeight = 1.7; // Total height
+        this.checkPoints = 3; // Number of points to check for collision
         
         // Mouse look parameters
         this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -122,31 +126,72 @@ export class PlayerController {
         }
     }
     
-    checkCollision(position, walls) {
-        const rays = [
-            new THREE.Vector3(1, 0, 0),   // right
-            new THREE.Vector3(-1, 0, 0),  // left
-            new THREE.Vector3(0, 0, 1),   // front
-            new THREE.Vector3(0, 0, -1),  // back
-            // Diagonal rays for better collision detection
-            new THREE.Vector3(1, 0, 1).normalize(),
-            new THREE.Vector3(-1, 0, 1).normalize(),
-            new THREE.Vector3(1, 0, -1).normalize(),
-            new THREE.Vector3(-1, 0, -1).normalize()
+    checkCollision(position, direction, collidableObjects) {
+        // Define collision rays based on movement direction
+        const rayDirections = [];
+        
+        // Add main movement direction ray
+        rayDirections.push(direction.clone().normalize());
+        
+        // Add slightly angled rays for better corner detection
+        const angle = Math.PI / 8; // 22.5 degrees
+        const rotationMatrix = new THREE.Matrix4();
+        
+        rotationMatrix.makeRotationY(angle);
+        rayDirections.push(direction.clone().normalize().applyMatrix4(rotationMatrix));
+        
+        rotationMatrix.makeRotationY(-angle);
+        rayDirections.push(direction.clone().normalize().applyMatrix4(rotationMatrix));
+
+        // Check collision at different heights of the player's body
+        const heightPoints = [
+            0.2,  // Near feet (raised slightly)
+            0.85, // Waist level
+            1.5   // Head level (lowered slightly)
         ];
 
-        for (const direction of rays) {
-            this.raycaster.set(position, direction);
-            const intersects = this.raycaster.intersectObjects(walls);
-            
-            if (intersects.length > 0 && intersects[0].distance < this.collisionRadius) {
-                return true;
+        let minCollisionDistance = Infinity;
+        
+        for (const object of collidableObjects) {
+            // Skip objects that are too far away for optimization
+            const objectPos = new THREE.Vector3();
+            object.getWorldPosition(objectPos);
+            if (position.distanceTo(objectPos) > 2) continue;
+
+            // Check each height point
+            for (const heightRatio of heightPoints) {
+                const checkPosition = position.clone();
+                checkPosition.y = heightRatio;
+
+                for (const rayDir of rayDirections) {
+                    this.raycaster.set(checkPosition, rayDir);
+                    const intersects = this.raycaster.intersectObject(object, true);
+                    
+                    if (intersects.length > 0) {
+                        const distance = intersects[0].distance;
+                        let minDistance = this.bodyRadius;
+                        
+                        // Adjust collision distance based on object type
+                        if (object.name && object.name.includes('table')) {
+                            minDistance = 0.4; // Reduced from 0.7
+                        } else if (object.name && object.name.includes('chair')) {
+                            minDistance = 0.3; // Reduced from 0.4
+                        } else if (object.name && object.name.includes('shelf')) {
+                            minDistance = 0.35; // Reduced from 0.5
+                        }
+
+                        if (distance < minDistance && distance < minCollisionDistance) {
+                            minCollisionDistance = distance;
+                        }
+                    }
+                }
             }
         }
-        return false;
+        
+        return minCollisionDistance;
     }
 
-    update(deltaTime, walls) {
+    update(deltaTime, collidableObjects) {
         if (document.pointerLockElement !== this.domElement) return;
         
         // Calculate movement direction
@@ -159,8 +204,10 @@ export class PlayerController {
         
         // Store current position for collision check
         const currentPosition = this.camera.position.clone();
+        currentPosition.y = 0; // Set to ground level for collision checks
         
-        // Calculate new position
+        // Calculate desired movement
+        this.velocity.set(0, 0, 0);
         if (this.moveForward || this.moveBackward) {
             this.velocity.z = -this.direction.z * actualSpeed;
         }
@@ -169,16 +216,32 @@ export class PlayerController {
         }
         
         // Apply movement with collision check
-        const movement = this.velocity.clone().applyQuaternion(this.camera.quaternion);
-        const newPosition = currentPosition.clone().add(movement);
-        
-        // Check for collisions at new position
-        if (!this.checkCollision(newPosition, walls)) {
-            this.camera.position.copy(newPosition);
+        if (this.velocity.lengthSq() > 0) {
+            const movement = this.velocity.clone().applyQuaternion(this.camera.quaternion);
+            const movementDirection = movement.clone().normalize();
+            const collisionDistance = this.checkCollision(currentPosition, movementDirection, collidableObjects);
+            
+            if (collisionDistance === Infinity) {
+                // No collision, move freely
+                this.camera.position.x += movement.x;
+                this.camera.position.z += movement.z;
+            } else if (collisionDistance > this.bodyRadius * 0.5) {
+                // Close to collision, allow partial movement
+                const scale = (collisionDistance - this.bodyRadius * 0.5) / collisionDistance;
+                this.camera.position.x += movement.x * scale;
+                this.camera.position.z += movement.z * scale;
+                
+                // Try sliding along the wall
+                const slideDirection = new THREE.Vector3(-movementDirection.z, 0, movementDirection.x);
+                const slideCollision = this.checkCollision(this.camera.position, slideDirection, collidableObjects);
+                
+                if (slideCollision > this.bodyRadius) {
+                    const slideMovement = slideDirection.multiplyScalar(actualSpeed * 0.5);
+                    this.camera.position.x += slideMovement.x;
+                    this.camera.position.z += slideMovement.z;
+                }
+            }
         }
-        
-        // Reset velocity
-        this.velocity.set(0, 0, 0);
         
         // Maintain height
         this.camera.position.y = this.height;
