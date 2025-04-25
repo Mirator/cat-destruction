@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { FOOD_TYPES } from './food.js';
 
 const BOWL_CONFIG = {
     size: {
@@ -15,6 +16,10 @@ const BOWL_CONFIG = {
         color: 0x00FF00,   // Green highlight for available bowl
         pulseSpeed: 2.0,   // Speed of highlight pulse
         range: 1.0         // How close player needs to be to interact
+    },
+    food: {
+        fillHeight: 0.04,  // Height of the food content
+        fillRadius: 0.16   // Radius of the food content (slightly smaller than bowl)
     }
 };
 
@@ -80,10 +85,23 @@ export class Bowl {
         rim.position.y = BOWL_CONFIG.size.height * 0.9;  // Place at top of walls
         rim.rotation.x = Math.PI / 2;  // Rotate to horizontal position
         
+        // Create food content mesh (initially invisible)
+        const foodGeometry = new THREE.CylinderGeometry(
+            BOWL_CONFIG.food.fillRadius,
+            BOWL_CONFIG.food.fillRadius,
+            BOWL_CONFIG.food.fillHeight,
+            32
+        );
+        this.foodContent = new THREE.Mesh(foodGeometry, new THREE.MeshStandardMaterial({
+            visible: false
+        }));
+        this.foodContent.position.y = BOWL_CONFIG.size.height * 0.3; // Position at bottom of bowl
+        
         // Add all parts to the group
         this.model.add(bottom);
         this.model.add(walls);
         this.model.add(rim);
+        this.model.add(this.foodContent);
         
         // Setup shadows
         this.model.traverse(child => {
@@ -106,7 +124,7 @@ export class Bowl {
         
         const material = enabled ? this.materials.highlight : this.materials.normal;
         this.model.traverse((object) => {
-            if (object.isMesh) {
+            if (object.isMesh && object !== this.foodContent) {
                 object.material = material;
             }
         });
@@ -123,10 +141,16 @@ export class Bowl {
     addFood(food) {
         if (this.currentFood || !food) return false;
         
-        // Position food in the bowl
-        food.model.position.copy(this.position);
-        food.model.position.y = BOWL_CONFIG.size.height * 0.7;
-        food.position.copy(food.model.position);
+        // Hide the original food model
+        food.model.visible = false;
+        
+        // Show and update the food content in bowl
+        this.foodContent.material = new THREE.MeshStandardMaterial({
+            color: FOOD_TYPES[food.type].color.content,
+            metalness: 0.1,
+            roughness: 0.8,
+            visible: true
+        });
         
         this.currentFood = food;
         this.setHighlight(false);
@@ -134,6 +158,11 @@ export class Bowl {
     }
 
     removeFood() {
+        if (!this.currentFood) return null;
+        
+        // Hide the food content
+        this.foodContent.material.visible = false;
+        
         const food = this.currentFood;
         this.currentFood = null;
         return food;

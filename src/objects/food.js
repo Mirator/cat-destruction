@@ -3,7 +3,10 @@ import * as THREE from 'three';
 export const FOOD_TYPES = {
     BASIC: {
         name: 'Basic Cat Food',
-        color: 0x8B4513,
+        color: {
+            package: 0x8B4513,  // Brown package
+            content: 0xCD853F   // Lighter brown content
+        },
         nutrition: 30,
         model: {
             width: 0.15,
@@ -13,7 +16,10 @@ export const FOOD_TYPES = {
     },
     PREMIUM: {
         name: 'Premium Cat Food',
-        color: 0xFFD700,
+        color: {
+            package: 0xFFD700,  // Gold package
+            content: 0xFFA500   // Orange content
+        },
         nutrition: 50,
         model: {
             width: 0.15,
@@ -52,7 +58,7 @@ export class Food {
         );
         
         this.originalMaterial = new THREE.MeshStandardMaterial({
-            color: config.color,
+            color: config.color.package,
             flatShading: true
         });
 
