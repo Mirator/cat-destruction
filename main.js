@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { createScene } from './src/scenes/mainScene.js';
 import { PlayerController } from './src/player/movement.js';
 import { Cat } from './src/objects/cat.js';
+import { InteractionManager } from './src/player/interaction-manager.js';
+import { INTERACTION_CONFIG } from './src/objects/food.js';
 
 // Initialize the scene
 const { scene, camera, renderer } = createScene();
@@ -18,6 +20,9 @@ const collidableObjects = scene.children.filter(child => {
 
 // Initialize player controller
 const playerController = new PlayerController(camera, renderer.domElement);
+
+// Initialize interaction manager
+const interactionManager = new InteractionManager(scene, playerController);
 
 // Initialize cat
 const cat = new Cat(scene, new THREE.Vector3(0, 0, -2)); // Start 2 meters in front of player
@@ -36,6 +41,9 @@ function animate() {
     
     // Update player movement with collision detection
     playerController.update(deltaTime, collidableObjects);
+    
+    // Update interaction manager
+    interactionManager.update(deltaTime);
     
     // Update cat behavior
     cat.update(deltaTime);

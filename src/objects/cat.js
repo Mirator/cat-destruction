@@ -68,7 +68,9 @@ const MOVEMENT_CONFIG = {
     collisionRadius: 0.2,
     collisionRays: 8,
     turnThreshold: 0.1,
-    minSpeedThreshold: 0.01
+    minSpeedThreshold: 0.01,
+    bowlDetectionRadius: 3.0,  // How far the cat can detect food bowls
+    bowlReachRadius: 0.2      // How close the cat needs to be to eat from bowl
 };
 
 export class Cat {
@@ -78,13 +80,16 @@ export class Cat {
         
         // State
         this.state = {
-            hunger: 0,
+            hunger: 50,        // Start somewhat hungry
             anger: 0,
             targetPosition: null,
             currentSpeed: 0,
             isRotating: false,
             facingAngle: 0,
-            targetAngle: 0
+            targetAngle: 0,
+            targetBowl: null,  // Reference to bowl being targeted
+            isEating: false,
+            lastBowlCheck: 0   // Time tracker for bowl detection
         };
         
         // Animation state
@@ -394,21 +399,81 @@ export class Cat {
         this.model.position.copy(this.position);
     }
 
+    detectFoodBowl() {
+        if (!this.state.targetBowl) {
+            // Find all food bowls in the scene
+            let nearestBowl = null;
+            let nearestDistance = Infinity;
+
+            this.scene.traverse((object) => {
+                if (object.name === 'food_bowl') {
+                    const bowl = object.parent;
+                    if (bowl && bowl.hasFood && bowl.hasFood()) {
+                        const distance = this.position.distanceTo(bowl.position);
+                        if (distance < MOVEMENT_CONFIG.bowlDetectionRadius && distance < nearestDistance) {
+                            nearestBowl = bowl;
+                            nearestDistance = distance;
+                        }
+                    }
+                }
+            });
+
+            if (nearestBowl) {
+                this.state.targetBowl = nearestBowl;
+                this.state.targetPosition = nearestBowl.position.clone();
+            }
+        }
+    }
+
+    checkBowlReach() {
+        if (this.state.targetBowl && this.state.targetBowl.hasFood()) {
+            const distance = this.position.distanceTo(this.state.targetBowl.position);
+            if (distance < MOVEMENT_CONFIG.bowlReachRadius) {
+                const food = this.state.targetBowl.currentFood;
+                const nutrition = food.consume();
+                this.state.hunger = Math.max(0, this.state.hunger - nutrition);
+                this.state.anger = Math.max(0, this.state.anger - nutrition/2);
+                this.state.targetBowl = null;
+                this.state.targetPosition = null;
+                this.state.isEating = true;
+                return true;
+            }
+        }
+        return false;
+    }
+
     update(deltaTime) {
         const clampedDelta = Math.min(deltaTime, 0.1);
         
         // Update states
-        this.state.hunger += clampedDelta;
+        this.state.hunger += clampedDelta * 2; // Increase hunger over time
         if (this.state.hunger > 100) this.state.hunger = 100;
         this.state.anger = Math.max(0, (this.state.hunger - 50) * 2);
         
-        // Random movement
-        if (!this.state.targetPosition && Math.random() < 0.01) {
+        // Check for food bowls periodically
+        this.state.lastBowlCheck += clampedDelta;
+        if (this.state.lastBowlCheck > 1.0) { // Check every second
+            this.state.lastBowlCheck = 0;
+            if (this.state.hunger > 30) { // Only look for food if somewhat hungry
+                this.detectFoodBowl();
+            }
+        }
+        
+        // Check if we've reached food bowl
+        if (this.checkBowlReach()) {
+            // Stay still briefly while "eating"
+            setTimeout(() => {
+                this.state.isEating = false;
+            }, 1000);
+        }
+        
+        // Random movement only if not targeting food and not eating
+        if (!this.state.targetPosition && !this.state.isEating && Math.random() < 0.01) {
             this.state.targetPosition = this.findNewTarget();
         }
         
-        // Move if we have a target
-        if (this.state.targetPosition) {
+        // Move if we have a target and aren't eating
+        if (this.state.targetPosition && !this.state.isEating) {
             const reached = this.moveTowards(this.state.targetPosition, clampedDelta);
             if (reached) {
                 this.state.targetPosition = null;
@@ -426,11 +491,5 @@ export class Cat {
                 segment.rotation.y = Math.sin(this.animation.tailWag - index * 0.5) * wagAmount;
             });
         }
-    }
-
-    feed() {
-        this.state.hunger = Math.max(0, this.state.hunger - 30);
-        this.state.anger = Math.max(0, this.state.anger - 20);
-        return true;
     }
 }

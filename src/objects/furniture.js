@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { Food } from './food.js';
+import { Bowl } from './bowl.js';
 
 // Common material configurations
 const WOOD_MATERIAL_CONFIG = {
@@ -26,7 +28,8 @@ const FURNITURE_DIMENSIONS = {
         width: 1.2,
         height: 1.8,
         depth: 0.3,
-        shelfThickness: 0.03
+        shelfThickness: 0.03,
+        shelfCount: 4
     }
 };
 
@@ -137,25 +140,36 @@ function createShelvingUnit() {
         shelfGroup.add(sideMesh);
     });
     
+    // Store shelf positions for food placement
+    const shelfPositions = [];
+    
     // Create horizontal shelves
     const shelfGeometry = new THREE.BoxGeometry(dims.width, dims.shelfThickness, dims.depth - 0.02);
-    const numShelves = 4;
     
-    for (let i = 0; i <= numShelves; i++) {
+    for (let i = 0; i <= dims.shelfCount; i++) {
         const shelf = new THREE.Mesh(shelfGeometry, woodMaterial);
         shelf.name = `shelf_horizontal_${i}`;
-        const height = (i * (dims.height / numShelves));
+        const height = (i * (dims.height / dims.shelfCount));
         shelf.position.set(0, height, 0);
         shelf.castShadow = true;
         shelf.receiveShadow = true;
         shelfGroup.add(shelf);
         
+        // Store shelf position for food placement
+        if (i > 0 && i < dims.shelfCount) { // Don't place food on top or bottom shelf
+            shelfPositions.push({
+                x: 0,
+                y: height + dims.shelfThickness,
+                z: 0
+            });
+        }
+        
         // Add dividers except for top shelf
-        if (i < numShelves) {
-            const dividerGeometry = new THREE.BoxGeometry(0.02, dims.height/numShelves - dims.shelfThickness, dims.depth - 0.05);
+        if (i < dims.shelfCount) {
+            const dividerGeometry = new THREE.BoxGeometry(0.02, dims.height/dims.shelfCount - dims.shelfThickness, dims.depth - 0.05);
             const divider = new THREE.Mesh(dividerGeometry, woodMaterial);
             divider.name = `shelf_divider_${i}`;
-            divider.position.set(0, height + (dims.height/numShelves)/2, 0);
+            divider.position.set(0, height + (dims.height/dims.shelfCount)/2, 0);
             divider.castShadow = true;
             shelfGroup.add(divider);
         }
@@ -168,6 +182,24 @@ function createShelvingUnit() {
     backing.position.set(0, dims.height/2, -dims.depth/2 + 0.01);
     backing.receiveShadow = true;
     shelfGroup.add(backing);
+    
+    // Generate food on shelves
+    const foodItems = [];
+    shelfPositions.forEach(pos => {
+        // Add 1-2 food items per shelf
+        const foodCount = Math.floor(Math.random() * 2) + 1;
+        for (let i = 0; i < foodCount; i++) {
+            const food = Food.generateRandomFood(
+                new THREE.Vector3(pos.x, pos.y, pos.z),
+                dims.width
+            );
+            foodItems.push(food);
+            shelfGroup.add(food.model);
+        }
+    });
+    
+    // Store food items reference
+    shelfGroup.userData.foodItems = foodItems;
     
     return shelfGroup;
 }
@@ -243,6 +275,11 @@ export function createFurniture(roomWidth, roomLength) {
     const shelf = createShelvingUnit();
     shelf.position.set(0, 0, -roomLength/2 + 0.15);
     furniture.push(shelf);
+    
+    // Create and position bowl
+    const bowlPosition = Bowl.generateRandomPosition(roomWidth, roomLength);
+    const bowl = new Bowl(bowlPosition);
+    furniture.push(bowl.model);
     
     return furniture;
 } 

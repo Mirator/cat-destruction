@@ -13,9 +13,37 @@
         canvas {
             display: block;
         }
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none; /* Makes sure it doesn't interfere with clicking */
+            z-index: 1000;
+        }
+        #crosshair::before,
+        #crosshair::after {
+            content: "";
+            position: absolute;
+            background-color: white;
+            opacity: 0.8;
+        }
+        #crosshair::before {
+            width: 2px;
+            height: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        #crosshair::after {
+            width: 20px;
+            height: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
     </style>
 </head>
 <body>
+    <div id="crosshair"></div>
     <script type="importmap">
         {
             "imports": {
