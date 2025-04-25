@@ -1,0 +1,36 @@
+import { createScene } from './src/scenes/mainScene.js';
+import { PlayerController } from './src/player/movement.js';
+
+// Initialize the scene
+const { scene, camera, renderer } = createScene();
+document.body.appendChild(renderer.domElement);
+
+// Get all walls from the scene
+const walls = scene.children.filter(child => 
+    child.isMesh && child !== scene.getObjectByName('floor')
+);
+
+// Initialize player controller
+const playerController = new PlayerController(camera, renderer.domElement);
+
+// Time tracking for smooth movement
+let lastTime = performance.now();
+
+// Animation loop
+function animate() {
+    requestAnimationFrame(animate);
+    
+    // Calculate delta time for smooth movement
+    const currentTime = performance.now();
+    const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
+    lastTime = currentTime;
+    
+    // Update player movement with collision detection
+    playerController.update(deltaTime, walls);
+    
+    // Render the scene
+    renderer.render(scene, camera);
+}
+
+// Start the animation loop
+animate();
