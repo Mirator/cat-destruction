@@ -10,12 +10,16 @@ export class PlayerController {
         this.moveBackward = false;
         this.moveLeft = false;
         this.moveRight = false;
-        this.canJump = true;
+        this.isCrouching = false;
         
         // Movement parameters
         this.speed = 2.5; // meters per second (average walking speed)
-        this.height = 1.7; // player height in meters
-        this.bodyRadius = 0.25; // reduced from 0.3
+        this.standingHeight = 1.7; // player height when standing
+        this.crouchingHeight = 1.0; // player height when crouching
+        this.bodyRadius = 0.25; // collision radius
+        
+        // Current height (starts at standing height)
+        this.height = this.standingHeight;
         
         // Player body parameters
         this.bodyHeight = 1.7; // Total height
@@ -87,6 +91,11 @@ export class PlayerController {
             case 'ArrowRight':
             case 'KeyD':
                 this.moveRight = true;
+                break;
+            case 'KeyC':
+                // Toggle crouch state
+                this.isCrouching = !this.isCrouching;
+                this.speed = this.isCrouching ? 1.5 : 2.5; // Adjust speed based on stance
                 break;
         }
     }
@@ -194,6 +203,13 @@ export class PlayerController {
     update(deltaTime, collidableObjects) {
         if (document.pointerLockElement !== this.domElement) return;
         
+        // Smoothly transition height when crouching/standing
+        const targetHeight = this.isCrouching ? this.crouchingHeight : this.standingHeight;
+        const heightDiff = targetHeight - this.height;
+        if (Math.abs(heightDiff) > 0.01) {
+            this.height += heightDiff * 10 * deltaTime;
+        }
+        
         // Calculate movement direction
         this.direction.z = Number(this.moveForward) - Number(this.moveBackward);
         this.direction.x = Number(this.moveLeft) - Number(this.moveRight);
@@ -243,7 +259,7 @@ export class PlayerController {
             }
         }
         
-        // Maintain height
+        // Update camera height
         this.camera.position.y = this.height;
     }
 }
