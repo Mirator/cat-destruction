@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Highlightable } from './Highlightable.js';
+import { Highlightable } from '../props/Highlightable.js';
 
 export const FOOD_TYPES = {
     BASIC: {

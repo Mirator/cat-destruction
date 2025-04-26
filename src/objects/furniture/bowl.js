@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { FOOD_TYPES } from './food.js';
-import { BOWL_CONFIG } from '../config/GameConfig.js';
-import { Highlightable } from './Highlightable.js';
+import { FOOD_TYPES } from '../food/food.js';
+import { BOWL_CONFIG } from '../../config/GameConfig.js';
+import { Highlightable } from '../props/Highlightable.js';
 
 export class Bowl extends Highlightable {
     constructor(position) {

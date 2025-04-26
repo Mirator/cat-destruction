@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Food } from './food.js';
+import { Food } from '../food/food.js';
 import { Bowl } from './bowl.js';
 import { stockShelf } from './shelfStocking.js';
 

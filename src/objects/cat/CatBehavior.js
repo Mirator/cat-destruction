@@ -1,5 +1,5 @@
-import { ACTIVITY_TYPES, CAT_CONFIG, UI_CONFIG } from '../config/GameConfig.js';
-import { FlowerProp } from './FlowerProp.js';
+import { ACTIVITY_TYPES, CAT_CONFIG, UI_CONFIG } from '../../config/GameConfig.js';
+import { FlowerProp } from '../props/FlowerProp.js';
 
 export class CatBehavior {
     constructor(cat, playerState = null) {

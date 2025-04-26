@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Food, FOOD_TYPES } from './food.js';
+import { Food, FOOD_TYPES } from '../food/food.js';
 
 // Adds 4-5 food items to the shelf, distributed across compartments
 export function stockShelf(shelfGroup, shelfPositions, shelfWidth) {

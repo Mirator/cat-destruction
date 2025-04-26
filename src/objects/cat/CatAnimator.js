@@ -1,4 +1,4 @@
-import { CAT_CONFIG } from '../config/GameConfig.js';
+import { CAT_CONFIG } from '../../config/GameConfig.js';
 
 export class CatAnimator {
     constructor(model, state, animation, tailSegments, legs, body, head) {

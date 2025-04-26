@@ -1,10 +1,10 @@
 import { InteractionUI } from '../ui/interaction-ui.js';
-import { Food } from '../objects/food.js';
-import { Bowl } from '../objects/bowl.js';
+import { Food } from '../objects/food/food.js';
+import { Bowl } from '../objects/furniture/bowl.js';
 import * as THREE from 'three';
-import { FlowerProp } from '../objects/FlowerProp.js';
+import { FlowerProp } from '../objects/props/FlowerProp.js';
 import { DialingUI } from '../ui/dialing-ui.js';
-import { stockShelf } from '../objects/shelfStocking.js';
+import { stockShelf } from '../objects/furniture/shelfStocking.js';
 
 export class InteractionManager {
     constructor(scene, player) {

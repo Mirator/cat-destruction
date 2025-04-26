@@ -1,5 +1,5 @@
-import { HungerBar } from '../ui/hungerBar.js';
-import { CatStatusBar } from '../ui/catStatusBar.js';
+import { HungerBar } from '../../ui/hungerBar.js';
+import { CatStatusBar } from '../../ui/catStatusBar.js';
 
 export class CatUIManager {
     constructor(state) {

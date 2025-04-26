@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { Bowl } from './bowl.js';
-import { CAT_CONFIG, ACTIVITY_TYPES } from '../config/GameConfig.js';
-import { CatState } from '../state/CatState.js';
+import { Bowl } from '../furniture/bowl.js';
+import { CAT_CONFIG, ACTIVITY_TYPES } from '../../config/GameConfig.js';
+import { CatState } from '../../state/CatState.js';
 import { CatAnimator } from './CatAnimator.js';
 import { CatUIManager } from './CatUIManager.js';
 import { CatBehavior } from './CatBehavior.js';

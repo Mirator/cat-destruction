@@ -1,9 +1,8 @@
 import * as THREE from 'three';
 import { createScene } from './src/scenes/mainScene.js';
 import { PlayerController } from './src/player/movement.js';
-import { Cat } from './src/objects/cat.js';
+import { Cat } from './src/objects/cat/cat.js';
 import { InteractionManager } from './src/player/interaction-manager.js';
-import { INTERACTION_CONFIG } from './src/objects/food.js';
 import { PlayerState } from './src/state/PlayerState.js';
 import { PlayerStatusBar } from './src/ui/playerStatusBar.js';
 import { GameOverScreen } from './src/ui/GameOverScreen.js';
