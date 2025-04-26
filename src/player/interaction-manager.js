@@ -4,6 +4,7 @@ import { Bowl } from '../objects/bowl.js';
 import * as THREE from 'three';
 import { FlowerProp } from '../objects/FlowerProp.js';
 import { DialingUI } from '../ui/dialing-ui.js';
+import { stockShelf } from '../objects/shelfStocking.js';
 
 export class InteractionManager {
     constructor(scene, player) {
@@ -21,6 +22,7 @@ export class InteractionManager {
         this.dialingActive = false;
         this.parcelShouldSpawn = false;
         this.carriedParcel = null;
+        this.shelf = null;
         
         // Configuration
         this.ROOM_BOUNDS = {
@@ -55,6 +57,7 @@ export class InteractionManager {
         this.flowerProps = [];
         this.telephone = null;
         this.parcel = null;
+        this.shelf = null;
         this.scene.traverse((object) => {
             if (object.userData?.foodInstance) {
                 this.foodItems.push(object.userData.foodInstance);
@@ -77,6 +80,9 @@ export class InteractionManager {
             }
             if (object.userData?.parcelInstance) {
                 this.parcel = object.userData.parcelInstance;
+            }
+            if (object.name === 'shelf') {
+                this.shelf = object;
             }
         });
     }
@@ -294,6 +300,30 @@ export class InteractionManager {
             this.carriedParcel.model.rotation.y = cam.rotation.y;
         }
 
+        // --- PARCEL RESTOCKING ---
+        let shelfInView = false;
+        if (this.carriedParcel && this.shelf) {
+            // Raycast for shelf in view
+            this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.player.camera);
+            const intersects = this.raycaster.intersectObject(this.shelf, true);
+            if (intersects.length > 0 && intersects[0].distance < 2.0) {
+                shelfInView = true;
+                this.shelf.setHighlight(true);
+                this.ui.showPrompt('Press [E] to restock shelf');
+            } else {
+                this.shelf.setHighlight(false);
+            }
+        } else if (this.shelf) {
+            this.shelf.setHighlight(false);
+        }
+
+        // --- FOOD CARRYING HELP TIP ---
+        if (this.carriedFood) {
+            this.ui.showHelpTip('Bring the food to the bowl to fill it!');
+        } else if (!this.carriedParcel) {
+            this.ui.hideHelpTip();
+        }
+
         this.updateHighlights(deltaTime, nearestFood, nearestBowl);
         this.ui.updateInteractionPrompt(nearestFood, nearestBowl, this.carriedFood !== null, nearestProp, this.nearestPhone);
         this.ui.updateDistance(this.player.camera, this.foodItems);
@@ -328,8 +358,35 @@ export class InteractionManager {
                     this.carriedFood = null;
                     // Clear all bowl highlights
                     this.bowls.forEach(bowl => bowl.setHighlight(false));
+                    this.ui.hideHelpTip(); // Hide help tip after filling bowl
                 }
             } else if (this.carriedParcel) {
+                // --- RESTOCK SHELF ---
+                if (this.shelf) {
+                    this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.player.camera);
+                    const intersects = this.raycaster.intersectObject(this.shelf, true);
+                    if (intersects.length > 0 && intersects[0].distance < 2.0) {
+                        // Remove parcel from scene
+                        this.scene.remove(this.carriedParcel.model);
+                        this.carriedParcel = null;
+                        // Restock shelf
+                        if (this.shelf.userData && this.shelf.userData.shelfPositions) {
+                            stockShelf(this.shelf, this.shelf.userData.shelfPositions, this.shelf.userData.shelfWidth);
+                        } else {
+                            // fallback: try to restock anyway
+                            stockShelf(this.shelf, [
+                                {x:0,y:0.015,z:0},
+                                {x:0,y:0.525,z:0},
+                                {x:0,y:0.975,z:0},
+                                {x:0,y:1.425,z:0}
+                            ], 1.2);
+                        }
+                        this.shelf.setHighlight(false);
+                        this.ui.hidePrompt();
+                        this.ui.hideHelpTip();
+                        return;
+                    }
+                }
                 this.handleDropParcel();
             } else if (this.tryResetNearestFlower()) {
                 // Flower was reset, do nothing else

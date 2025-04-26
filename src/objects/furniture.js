@@ -194,6 +194,23 @@ function createShelvingUnit() {
     // Use stockShelf for initial stocking
     stockShelf(shelfGroup, shelfPositions, dims.width);
     
+    // Add highlight method to shelfGroup
+    shelfGroup.setHighlight = function(enabled) {
+        const highlightColor = new THREE.Color(0x3399ff); // blue
+        const highlightIntensity = 0.7;
+        this.traverse(obj => {
+            if (obj.isMesh && obj.material) {
+                if (enabled) {
+                    obj.material.emissive = highlightColor;
+                    obj.material.emissiveIntensity = highlightIntensity;
+                } else {
+                    obj.material.emissive = new THREE.Color(0x000000);
+                    obj.material.emissiveIntensity = 0.0;
+                }
+            }
+        });
+    };
+    
     return shelfGroup;
 }
 
