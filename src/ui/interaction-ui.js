@@ -1,10 +1,7 @@
 import * as THREE from 'three';
 
-console.log('[DEBUG][UI] interaction-ui.js loaded');
-
 export class InteractionUI {
     constructor() {
-        console.log('[DEBUG][UI] InteractionUI constructed');
         this.createPromptElement();
         this.createDistanceDisplay();
     }
@@ -50,13 +47,11 @@ export class InteractionUI {
     }
 
     showPrompt(text) {
-        console.log('[DEBUG][UI] showPrompt:', text);
         this.promptElement.textContent = text;
         this.promptElement.style.display = 'block';
     }
 
     hidePrompt() {
-        console.log('[DEBUG][UI] hidePrompt');
         this.promptElement.style.display = 'none';
     }
 
@@ -94,7 +89,6 @@ export class InteractionUI {
     }
 
     updateInteractionPrompt(nearestFood, nearestBowl, isCarryingFood, nearestProp) {
-        console.log('[DEBUG][UI] nearestFood:', nearestFood, 'nearestProp:', nearestProp, 'isKnockedOver:', nearestProp && nearestProp.isKnockedOver);
         if (isCarryingFood) {
             if (nearestBowl) {
                 this.showPrompt('Press [E] to fill the bowl');

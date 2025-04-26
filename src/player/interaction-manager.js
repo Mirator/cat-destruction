@@ -165,7 +165,6 @@ export class InteractionManager {
     }
 
     update(deltaTime) {
-        console.log('[DEBUG][IM] update called');
         if (!this.player?.camera) return;
 
         // Update all bowls (for smooth fill animation)
@@ -213,31 +212,23 @@ export class InteractionManager {
             }
             if (prop && prop.isKnockedOver) {
                 const dist = this.player.camera.position.distanceTo(prop.model.position);
-                console.log('[DEBUG] Prop hit:', prop, 'isKnockedOver:', prop.isKnockedOver, 'distance:', dist);
                 if (dist < minPropDist) {
                     nearestProp = prop;
                     minPropDist = dist;
                 }
             }
-        } else {
-            console.log('[DEBUG] No prop intersected by raycast');
         }
         // Highlight only the nearest knocked-over prop
         this.flowerProps.forEach(prop => {
-            if (prop === nearestProp) {
-                console.log('[DEBUG] Highlighting prop:', prop);
-            }
             prop.setHighlight(prop === nearestProp);
         });
         if (nearestProp) {
             nearestProp.updateHighlight(deltaTime);
         }
         if (nearestProp && nearestProp.isKnockedOver) {
-            console.log('[DEBUG] Should show prompt for prop:', nearestProp);
         }
 
         this.updateHighlights(deltaTime, nearestFood, nearestBowl);
-        console.log('[DEBUG][IM] Calling updateInteractionPrompt with:', nearestFood, nearestBowl, this.carriedFood !== null, nearestProp);
         this.ui.updateInteractionPrompt(nearestFood, nearestBowl, this.carriedFood !== null, nearestProp);
         this.ui.updateDistance(this.player.camera, this.foodItems);
     }
