@@ -22,13 +22,7 @@ let gameOver = false;
 let gameStarted = false;
 
 function restartGame() {
-    // Reset player state and cat position (simple reset)
-    playerState.setHealth(playerState.maxHealth);
-    if (cat && cat.position) cat.position.set(0, 0, -2);
-    gameOver = false;
-    gameOverScreen.hide();
-    lastTime = performance.now();
-    animate();
+    window.location.reload();
 }
 
 const gameOverScreen = new GameOverScreen(restartGame);

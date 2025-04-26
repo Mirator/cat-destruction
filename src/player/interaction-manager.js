@@ -321,4 +321,27 @@ export class InteractionManager {
         }
         return false;
     }
+
+    resetAll() {
+        // Reset all flowers
+        this.flowerProps.forEach(flower => flower.reset());
+
+        // Remove food from all bowls and reset fill
+        this.bowls.forEach(bowl => {
+            if (typeof bowl.removeFood === 'function') bowl.removeFood();
+            if (typeof bowl.setFoodFill === 'function') bowl.setFoodFill(0);
+        });
+
+        // Reset all food items (make them visible and not consumed/picked up)
+        this.foodItems.forEach(food => {
+            food.isConsumed = false;
+            food.isPickedUp = false;
+            food.model.visible = true;
+            // Optionally reset position if needed
+            food.model.position.copy(food.position);
+        });
+
+        // Reset carried food
+        this.carriedFood = null;
+    }
 } 
