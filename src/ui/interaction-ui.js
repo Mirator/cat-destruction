@@ -3,7 +3,6 @@ import * as THREE from 'three';
 export class InteractionUI {
     constructor() {
         this.createPromptElement();
-        this.createDistanceDisplay();
         this.createHelpTipElement();
     }
 
@@ -28,23 +27,6 @@ export class InteractionUI {
         
         // Add to document
         document.body.appendChild(this.promptElement);
-    }
-
-    createDistanceDisplay() {
-        this.distanceElement = document.createElement('div');
-        this.distanceElement.style.position = 'fixed';
-        this.distanceElement.style.bottom = '20px';
-        this.distanceElement.style.left = '20px';
-        this.distanceElement.style.backgroundColor = 'rgba(255, 236, 210, 0.95)';
-        this.distanceElement.style.color = '#6d4c2c';
-        this.distanceElement.style.padding = '5px 10px';
-        this.distanceElement.style.borderRadius = '12px';
-        this.distanceElement.style.boxShadow = '0 2px 12px rgba(120,80,40,0.10)';
-        this.distanceElement.style.fontFamily = 'monospace, "Quicksand", "Segoe UI", Arial, sans-serif';
-        this.distanceElement.style.fontSize = '14px';
-        this.distanceElement.style.zIndex = '1000';
-        this.distanceElement.style.transition = 'opacity 0.5s, box-shadow 0.5s';
-        document.body.appendChild(this.distanceElement);
     }
 
     createHelpTipElement() {
@@ -74,39 +56,6 @@ export class InteractionUI {
 
     hidePrompt() {
         this.promptElement.style.display = 'none';
-    }
-
-    updateDistance(camera, foodItems) {
-        if (!camera || !foodItems.length) {
-            this.distanceElement.style.display = 'none';
-            return;
-        }
-
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-        
-        let closestDistance = Infinity;
-        let closestName = '';
-        
-        for (const food of foodItems) {
-            if (food.isConsumed || food.isPickedUp) continue;
-            
-            const intersects = raycaster.intersectObject(food.model, true);
-            if (intersects.length > 0) {
-                const distance = intersects[0].distance;
-                if (distance < closestDistance) {
-                    closestDistance = distance;
-                    closestName = food.getName();
-                }
-            }
-        }
-
-        if (closestDistance === Infinity) {
-            this.distanceElement.style.display = 'none';
-        } else {
-            this.distanceElement.style.display = 'block';
-            this.distanceElement.textContent = `Distance to ${closestName}: ${closestDistance.toFixed(2)}m`;
-        }
     }
 
     updateInteractionPrompt(nearestFood, nearestBowl, isCarryingFood, nearestProp, nearestPhone) {

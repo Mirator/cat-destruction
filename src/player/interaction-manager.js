@@ -326,7 +326,6 @@ export class InteractionManager {
 
         this.updateHighlights(deltaTime, nearestFood, nearestBowl);
         this.ui.updateInteractionPrompt(nearestFood, nearestBowl, this.carriedFood !== null, nearestProp, this.nearestPhone);
-        this.ui.updateDistance(this.player.camera, this.foodItems);
     }
 
     updateHighlights(deltaTime, nearestFood, nearestBowl) {
