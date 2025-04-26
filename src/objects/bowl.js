@@ -10,12 +10,13 @@ export class Bowl extends Highlightable {
         super(model);
         this.position = position;
         this.currentFood = null;
-        this.cats = new Set(); // Store references to cats in the scene
+        this.cats = new Set();
         this.createMaterials();
         this.model = model;
-        this.fill = 0; // 0 = empty, 1 = full
-        this.targetFill = 0; // For smooth animation
+        this.fill = 0;
+        this.targetFill = 0;
         this.createModel();
+        this.setFoodFill(0);
     }
 
     createMaterials() {
@@ -36,28 +37,14 @@ export class Bowl extends Highlightable {
     }
 
     createModel() {
-        // Create bottom part of the bowl
         const bottom = this.createBottomPart();
-        
-        // Create walls of the bowl
         const walls = this.createWalls();
-        
-        // Create rim of the bowl
         const rim = this.createRim();
-        
-        // Create food content mesh (initially invisible)
         this.foodContent = this.createFoodContent();
         
-        // Add all parts to the group
         this.model.add(bottom, walls, rim, this.foodContent);
-        
-        // Setup shadows
         this.setupShadows();
-        
-        // Position the group
         this.model.position.copy(this.position);
-        
-        // Store reference to this instance
         this.model.userData.bowlInstance = this;
     }
 
@@ -68,8 +55,9 @@ export class Bowl extends Highlightable {
             BOWL_CONFIG.size.height * 0.2,
             32
         );
-        const bottom = new THREE.Mesh(geometry, this.materials.normal);
+        const bottom = new THREE.Mesh(geometry, this.materials.normal.clone());
         bottom.position.y = BOWL_CONFIG.size.height * 0.1;
+        // Bottom is opaque by default
         return bottom;
     }
 
@@ -104,13 +92,17 @@ export class Bowl extends Highlightable {
         const geometry = new THREE.CylinderGeometry(
             BOWL_CONFIG.food.fillRadius,
             BOWL_CONFIG.food.fillRadius,
-            BOWL_CONFIG.food.fillHeight,
+            0.1,
             32
         );
         const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
-            visible: false
+            color: 0xCD853F, // Default food color
+            roughness: 0.8,
+            metalness: 0.0,
+            visible: true
         }));
-        mesh.position.y = BOWL_CONFIG.size.height * 0.3;
+        mesh.position.y = BOWL_CONFIG.size.height * 0.1 + 0.05; // raised to avoid z-fighting
+        mesh.renderOrder = 2;
         return mesh;
     }
 
@@ -126,14 +118,26 @@ export class Bowl extends Highlightable {
     addFood(food) {
         if (this.currentFood || !food) return false;
         food.model.visible = false;
+        
+        // Update the food content material
+        const foodColor = FOOD_TYPES[food.type].color.content;
         this.foodContent.material = new THREE.MeshStandardMaterial({
-            color: FOOD_TYPES[food.type].color.content,
-            metalness: 0.1,
+            color: foodColor,
             roughness: 0.8,
+            metalness: 0.0,
             visible: true
         });
+        
         this.currentFood = food;
-        this.targetFill = 1; // Set target fill, not fill directly
+        this.targetFill = 1;
+        this.foodContent.visible = true;
+        this.setFoodFill(1);
+        this.fill = 1;
+        
+        // Make bottom transparent when food is added
+        this.model.children[0].material.transparent = true;
+        this.model.children[0].material.opacity = 0.3;
+        
         // Notify all cats in the scene about the food
         this.cats.forEach(cat => cat.notifyFoodAdded(this));
         return true;
@@ -144,7 +148,12 @@ export class Bowl extends Highlightable {
         this.foodContent.material.visible = false;
         const food = this.currentFood;
         this.currentFood = null;
-        this.targetFill = 0; // Set target fill, not fill directly
+        this.targetFill = 0;
+        
+        // Make bottom opaque again when food is removed
+        this.model.children[0].material.transparent = false;
+        this.model.children[0].material.opacity = 1.0;
+        
         return food;
     }
 
@@ -186,15 +195,11 @@ export class Bowl extends Highlightable {
     }
 
     setFoodFill(fill) {
-        // Clamp fill between 0 and 1
         this.fill = Math.max(0, Math.min(1, fill));
-        // Scale the food content mesh vertically
         this.foodContent.scale.y = this.fill;
-        // Adjust position so the top stays at the same place
         const baseY = BOWL_CONFIG.size.height * 0.3;
         const fullHeight = BOWL_CONFIG.food.fillHeight;
         this.foodContent.position.y = baseY - (fullHeight * (1 - this.fill)) / 2;
-        // Optionally hide if empty
         this.foodContent.visible = this.fill > 0;
     }
 
@@ -211,9 +216,9 @@ export class Bowl extends Highlightable {
         if (this.isHighlighted === enabled) return;
         this.isHighlighted = enabled;
         this.pulseTime = 0;
-        // Swap materials for all bowl parts
+        
         this.model.traverse(obj => {
-            if (obj.isMesh && obj.material) {
+            if (obj.isMesh && obj.material && obj !== this.foodContent) {
                 obj.material = enabled ? this.materials.highlight : this.materials.normal;
             }
         });
