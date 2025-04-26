@@ -189,10 +189,50 @@ export function createScene() {
     const furniture = createFurniture(roomWidth, roomLength);
     furniture.forEach(item => scene.add(item));
 
-    // Add flower props
+    // --- Ensure flowers are not too close to the table ---
+    // Find the table in the furniture array
+    const table = furniture.find(obj => obj.name === 'table');
+    const tablePos = table ? table.position : new THREE.Vector3(0, 0, 0);
+    // Table size from config
+    const tableSize = { width: 1.4, depth: 1.0 };
+    // Helper: check if two objects are too close (AABB in XZ)
+    function isTooCloseXZ(posA, sizeA, posB, sizeB, minGap = 0.25) {
+        return (
+            Math.abs(posA.x - posB.x) < (sizeA.width / 2 + sizeB.width / 2 + minGap) &&
+            Math.abs(posA.z - posB.z) < (sizeA.depth / 2 + sizeB.depth / 2 + minGap)
+        );
+    }
+    // Helper: clamp position within room bounds
+    function clampToRoom(x, z, margin = 0.3) {
+        return {
+            x: Math.max(-roomWidth/2 + margin, Math.min(roomWidth/2 - margin, x)),
+            z: Math.max(-roomLength/2 + margin, Math.min(roomLength/2 - margin, z))
+        };
+    }
+    // Add flower props, adjusting if too close to table
     FLOWER_CONFIG.variants.forEach(variant => {
+        let pos = { ...variant.position };
+        const flowerSize = { width: 0.18, depth: 0.18 }; // Pot + leaves
+        // If too close, shift along X or Z (simple logic)
+        if (isTooCloseXZ(pos, flowerSize, tablePos, tableSize)) {
+            // Try shifting along X first
+            if (pos.x < tablePos.x) pos.x -= (tableSize.width/2 + flowerSize.width/2 + 0.3);
+            else pos.x += (tableSize.width/2 + flowerSize.width/2 + 0.3);
+            // Clamp to room
+            const clamped = clampToRoom(pos.x, pos.z);
+            pos.x = clamped.x;
+            pos.z = clamped.z;
+            // If still too close, shift along Z
+            if (isTooCloseXZ(pos, flowerSize, tablePos, tableSize)) {
+                if (pos.z < tablePos.z) pos.z -= (tableSize.depth/2 + flowerSize.depth/2 + 0.3);
+                else pos.z += (tableSize.depth/2 + flowerSize.depth/2 + 0.3);
+                const clamped2 = clampToRoom(pos.x, pos.z);
+                pos.x = clamped2.x;
+                pos.z = clamped2.z;
+            }
+        }
         const flower = new FlowerProp(
-            new THREE.Vector3(variant.position.x, variant.position.y, variant.position.z),
+            new THREE.Vector3(pos.x, pos.y, pos.z),
             { flowerColor: variant.flowerColor }
         );
         scene.add(flower.model);
