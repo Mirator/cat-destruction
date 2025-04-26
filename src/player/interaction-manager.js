@@ -2,6 +2,7 @@ import { InteractionUI } from '../ui/interaction-ui.js';
 import { Food } from '../objects/food.js';
 import { Bowl } from '../objects/bowl.js';
 import * as THREE from 'three';
+import { FlowerProp } from '../objects/prop.js';
 
 export class InteractionManager {
     constructor(scene, player) {
@@ -12,6 +13,7 @@ export class InteractionManager {
         this.foodItems = [];
         this.bowls = [];
         this.dropSurfaces = [];
+        this.flowerProps = [];
         this.raycaster = new THREE.Raycaster();
         
         // Configuration
@@ -37,13 +39,16 @@ export class InteractionManager {
         this.foodItems = [];
         this.bowls = [];
         this.dropSurfaces = [];
-        
+        this.flowerProps = [];
         this.scene.traverse((object) => {
             if (object.userData?.foodInstance) {
                 this.foodItems.push(object.userData.foodInstance);
             }
             if (object.userData?.bowlInstance) {
                 this.bowls.push(object.userData.bowlInstance);
+            }
+            if (object.userData?.propInstance instanceof FlowerProp) {
+                this.flowerProps.push(object.userData.propInstance);
             }
             if (object.isMesh && object.geometry && (
                 object.name === 'floor' ||
@@ -165,6 +170,9 @@ export class InteractionManager {
         // Update all bowls (for smooth fill animation)
         this.bowls.forEach(bowl => bowl.update(deltaTime));
 
+        // Update all flower props (for knock-over animation)
+        this.flowerProps.forEach(flower => flower.update(deltaTime));
+
         if (this.carriedFood) {
             this.carriedFood.updateCarriedPosition(
                 this.player.camera.position,
@@ -210,12 +218,15 @@ export class InteractionManager {
     }
 
     handleKeyPress(event) {
-        if (event.key.toLowerCase() !== 'e' || !this.player?.camera) return;
-
-        if (this.carriedFood) {
-            this.handleDrop();
-        } else {
-            this.handlePickup();
+        if (event.key.toLowerCase() === 'e' && this.player?.camera) {
+            if (this.carriedFood) {
+                this.handleDrop();
+            } else {
+                this.handlePickup();
+            }
+        }
+        if (event.key.toLowerCase() === 'r' && this.player?.camera) {
+            this.resetNearestFlower();
         }
     }
 
@@ -243,6 +254,25 @@ export class InteractionManager {
             if (nearestFood.pickup()) {
                 this.carriedFood = nearestFood;
             }
+        }
+    }
+
+    resetNearestFlower() {
+        if (!this.flowerProps.length) return;
+        const camPos = this.player.camera.position;
+        let nearest = null;
+        let minDist = 2.0; // max reset distance
+        this.flowerProps.forEach(flower => {
+            if (flower.isKnockedOver) {
+                const dist = flower.model.position.distanceTo(camPos);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = flower;
+                }
+            }
+        });
+        if (nearest) {
+            nearest.reset();
         }
     }
 } 

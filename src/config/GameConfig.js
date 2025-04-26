@@ -202,7 +202,8 @@ export const ACTIVITY_TYPES = {
     GOING_TO_BOWL: 'goingToBowl',
     MEOWING: 'meowing',
     ROTATING: 'rotating',
-    HEARD_FOOD: 'heardFood'
+    HEARD_FOOD: 'heardFood',
+    KNOCKING_PROP: 'knockingProp'
 };
 
 // Activity Descriptions for UI
@@ -214,5 +215,29 @@ export const ACTIVITY_DESCRIPTIONS = {
     [ACTIVITY_TYPES.GOING_TO_BOWL]: 'Going to the Bowl',
     [ACTIVITY_TYPES.MEOWING]: 'Meowing',
     [ACTIVITY_TYPES.ROTATING]: 'Looking Around',
-    [ACTIVITY_TYPES.HEARD_FOOD]: 'Noticed Food!'
+    [ACTIVITY_TYPES.HEARD_FOOD]: 'Noticed Food!',
+    [ACTIVITY_TYPES.KNOCKING_PROP]: 'Up to No Good'
+};
+
+// Flower Props Configuration
+export const FLOWER_CONFIG = {
+    variants: [
+        {
+            name: 'Pink Daisy',
+            flowerColor: 0xFF69B4,
+            position: { x: -1.2, y: 0, z: 1.5 }
+        },
+        {
+            name: 'Bluebell',
+            flowerColor: 0x6495ED,
+            position: { x: 1.3, y: 0, z: 2.0 }
+        },
+        {
+            name: 'Sunflower',
+            flowerColor: 0xFFD700,
+            position: { x: 0.0, y: 0, z: -1.7 }
+        }
+    ],
+    knockOverRotation: Math.PI / 2,
+    resetRotation: 0
 }; 

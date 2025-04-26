@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { createFurniture } from '../objects/furniture.js';
 import { Food } from '../objects/food.js';
+import { FlowerProp } from '../objects/prop.js';
+import { FLOWER_CONFIG } from '../config/GameConfig.js';
 
 export function createScene() {
     // Create scene, camera and renderer
@@ -96,6 +98,15 @@ export function createScene() {
     // Add furniture
     const furniture = createFurniture(roomWidth, roomLength);
     furniture.forEach(item => scene.add(item));
+
+    // Add flower props
+    FLOWER_CONFIG.variants.forEach(variant => {
+        const flower = new FlowerProp(
+            new THREE.Vector3(variant.position.x, variant.position.y, variant.position.z),
+            { flowerColor: variant.flowerColor }
+        );
+        scene.add(flower.model);
+    });
 
     // Set initial camera position
     camera.position.set(0, 1.7, 0); // Eye height

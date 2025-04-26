@@ -47,6 +47,8 @@ export class Cat {
             .forEach(bowl => bowl.registerCat(this));
 
         this.behavior = new CatBehavior(this);
+        this.blockedFrames = 0;
+        this.tempWaypoint = null;
     }
 
     _setupAudioContextOnUserGesture() {
@@ -288,34 +290,28 @@ export class Cat {
     checkCollision(position, direction) {
         const rayAngles = [];
         const angleStep = (2 * Math.PI) / CAT_CONFIG.movement.collisionRays;
-        
         for (let i = 0; i < CAT_CONFIG.movement.collisionRays; i++) {
             rayAngles.push(i * angleStep);
         }
-        
         let collision = false;
         let collisionNormal = new THREE.Vector3();
-        
         const collidableObjects = [];
         this.scene.traverse((object) => {
             if (object.name && (
                 object.name.includes('table') ||
                 object.name.includes('chair') ||
                 object.name.includes('shelf') ||
-                object.name === 'floor' ||
                 object.name.includes('wall')
             )) {
                 collidableObjects.push(object);
             }
         });
-        
         for (const angle of rayAngles) {
             const rayDirection = new THREE.Vector3(
                 Math.cos(angle),
                 0,
                 Math.sin(angle)
             );
-            
             this.raycaster.set(position, rayDirection);
             const intersects = this.raycaster.intersectObjects(collidableObjects, true);
             if (intersects.length > 0 && intersects[0].distance < CAT_CONFIG.movement.collisionRadius) {
@@ -323,11 +319,9 @@ export class Cat {
                 collisionNormal.add(intersects[0].face.normal);
             }
         }
-        
         if (collision) {
             collisionNormal.normalize();
         }
-        
         return { collision, normal: collisionNormal };
     }
 
@@ -354,20 +348,22 @@ export class Cat {
     updateRotation(toTarget, deltaTime) {
         this.state.movement.targetAngle = Math.atan2(toTarget.x, toTarget.z);
         let angleDiff = this.state.movement.targetAngle - this.state.movement.facingAngle;
-        
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-        
+        // Snap facing angle to target when close
+        if (toTarget.length() < 2 && Math.abs(angleDiff) < 0.2) {
+            this.state.movement.facingAngle = this.state.movement.targetAngle;
+            this.model.rotation.y = this.state.movement.facingAngle;
+            angleDiff = 0;
+            this.state.movement.isRotating = false;
+        }
         this.state.movement.isRotating = Math.abs(angleDiff) > CAT_CONFIG.movement.turnThreshold;
-        
         if (this.state.movement.isRotating) {
             const rotationStep = Math.sign(angleDiff) * 
                 Math.min(Math.abs(angleDiff), CAT_CONFIG.movement.rotationSpeed * deltaTime);
             this.state.movement.facingAngle += rotationStep;
-            
             while (this.state.movement.facingAngle > Math.PI) this.state.movement.facingAngle -= Math.PI * 2;
             while (this.state.movement.facingAngle < -Math.PI) this.state.movement.facingAngle += Math.PI * 2;
-            
             this.model.rotation.y = this.state.movement.facingAngle;
             this.state.movement.currentSpeed = Math.max(0, this.state.movement.currentSpeed - CAT_CONFIG.movement.deceleration * deltaTime);
         } else {
@@ -376,28 +372,55 @@ export class Cat {
                 this.state.movement.currentSpeed + CAT_CONFIG.movement.acceleration * deltaTime
             );
         }
-
         const tiltAmount = this.state.movement.isRotating ? (angleDiff / Math.PI) * 0.1 : 0;
         this.head.rotation.z = -tiltAmount;
     }
 
     updateMovement(deltaTime) {
+        // Reset collision log flag at the start of each frame
+        window._catCollisionLoggedThisFrame = false;
+        // Only move if facing the target closely enough
+        const angleDiff = Math.abs(this.state.movement.targetAngle - this.state.movement.facingAngle);
+        if (angleDiff > 0.3) {
+            this.state.movement.currentSpeed = 0;
+            return;
+        }
+        // Use tempWaypoint if set
+        let targetPos = this.tempWaypoint || this.state.movement.targetPosition;
+        if (!targetPos) return;
+        const toTarget = targetPos.clone().sub(this.position);
+        const distance = toTarget.length();
+        if (distance < 0.15) {
+            if (this.tempWaypoint) {
+                // Arrived at waypoint, clear it
+                this.tempWaypoint = null;
+                this.blockedFrames = 0;
+                return;
+            }
+        }
         if (this.state.movement.currentSpeed > 0) {
             const movement = new THREE.Vector3(
                 Math.sin(this.state.movement.facingAngle),
                 0,
                 Math.cos(this.state.movement.facingAngle)
             ).multiplyScalar(this.state.movement.currentSpeed * deltaTime);
-            
             const nextPosition = this.position.clone().add(movement);
             const collisionCheck = this.checkCollision(nextPosition, movement.normalize());
-            
-            if (!collisionCheck.collision) {
-                this.position.copy(nextPosition);
+            if (collisionCheck.collision) {
+                this.blockedFrames++;
+                if (this.blockedFrames > 20 && !this.tempWaypoint) {
+                    // Pick a random waypoint near the target
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = 0.5 + Math.random() * 0.5;
+                    const offset = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle)).multiplyScalar(radius);
+                    this.tempWaypoint = targetPos.clone().add(offset);
+                    this.blockedFrames = 0;
+                    return;
+                }
             } else {
-                this.handleCollision(movement, collisionCheck.normal);
+                this.position.copy(nextPosition);
+                this.blockedFrames = 0;
             }
-            
             this.updatePosition();
         }
     }
@@ -406,14 +429,11 @@ export class Cat {
         const slide = movement.clone()
             .sub(normal.multiplyScalar(movement.dot(normal)))
             .multiplyScalar(0.5);
-        
         const slidePosition = this.position.clone().add(slide);
         const slideCollision = this.checkCollision(slidePosition, slide.normalize());
-        
         if (!slideCollision.collision) {
             this.position.copy(slidePosition);
         }
-        
         if (this.state.movement.currentSpeed < 0.1) {
             this.state.targetPosition = this.findNewTarget();
         }
@@ -445,7 +465,6 @@ export class Cat {
 
     notifyFoodAdded(bowl) {
         if (this.state.hunger >= CAT_CONFIG.hunger.thresholds.interested && !this.state.food.isEating) {
-            console.log('[Cat] Heard food added to bowl at', bowl.position, 'Current hunger:', this.state.hunger);
         }
         this.state.updateFood({
             heardFood: true,
