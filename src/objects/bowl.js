@@ -1,29 +1,6 @@
 import * as THREE from 'three';
 import { FOOD_TYPES } from './food.js';
-
-const BOWL_CONFIG = {
-    size: {
-        radius: 0.2,
-        height: 0.08
-    },
-    color: 0x808080, // Gray metallic color
-    position: {
-        wallOffset: 0.3    // Distance from wall
-    },
-    highlight: {
-        color: 0x00FF00,   // Green highlight for available bowl
-        pulseSpeed: 2.0,   // Speed of highlight pulse
-        range: 1.0         // How close player needs to be to interact
-    },
-    food: {
-        fillHeight: 0.04,  // Height of the food content
-        fillRadius: 0.16   // Radius of the food content (slightly smaller than bowl)
-    },
-    materials: {
-        metalness: 0.7,
-        roughness: 0.3
-    }
-};
+import { BOWL_CONFIG } from '../config/GameConfig.js';
 
 export class Bowl {
     constructor(position) {

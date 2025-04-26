@@ -1,38 +1,4 @@
-const HUNGER_UI_CONFIG = {
-    container: {
-        position: { top: '20px', right: '20px' },
-        size: { width: '200px' },
-        style: {
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            padding: '10px',
-            borderRadius: '5px',
-            fontFamily: 'Arial, sans-serif',
-            zIndex: '1000'
-        }
-    },
-    text: {
-        style: {
-            color: 'white',
-            fontSize: '14px'
-        }
-    },
-    bar: {
-        size: { height: '20px' },
-        style: {
-            backgroundColor: 'rgba(255, 255, 255, 0.2)',
-            borderRadius: '3px'
-        }
-    },
-    thresholds: {
-        wellFed: 30,
-        hungry: 70
-    },
-    colors: {
-        wellFed: '#4CAF50',    // Green
-        hungry: '#FFA726',     // Orange
-        veryHungry: '#F44336'  // Red
-    }
-};
+import { UI_CONFIG } from '../config/GameConfig.js';
 
 export class HungerBar {
     constructor() {
@@ -42,9 +8,13 @@ export class HungerBar {
     createElements() {
         this.container = this.createElement('div', {
             position: 'fixed',
-            ...HUNGER_UI_CONFIG.container.position,
-            ...HUNGER_UI_CONFIG.container.size,
-            ...HUNGER_UI_CONFIG.container.style
+            ...UI_CONFIG.hungerBar.position,
+            width: UI_CONFIG.hungerBar.size.width,
+            backgroundColor: UI_CONFIG.hungerBar.colors.background,
+            padding: '10px',
+            borderRadius: '5px',
+            fontFamily: 'Arial, sans-serif',
+            zIndex: '1000'
         });
 
         this.headerContainer = this.createElement('div', {
@@ -54,18 +24,21 @@ export class HungerBar {
         });
 
         this.label = this.createElement('div', {
-            ...HUNGER_UI_CONFIG.text.style
+            color: 'white',
+            fontSize: '14px'
         });
         this.label.textContent = 'Hunger';
 
         this.hungerValue = this.createElement('div', {
-            ...HUNGER_UI_CONFIG.text.style
+            color: 'white',
+            fontSize: '14px'
         });
 
         this.barContainer = this.createElement('div', {
             width: '100%',
-            ...HUNGER_UI_CONFIG.bar.size,
-            ...HUNGER_UI_CONFIG.bar.style,
+            height: UI_CONFIG.hungerBar.size.height,
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            borderRadius: '3px',
             overflow: 'hidden'
         });
 
@@ -93,18 +66,18 @@ export class HungerBar {
     }
 
     getStatusColor(hunger) {
-        if (hunger < HUNGER_UI_CONFIG.thresholds.wellFed) {
-            return HUNGER_UI_CONFIG.colors.wellFed;
-        } else if (hunger < HUNGER_UI_CONFIG.thresholds.hungry) {
-            return HUNGER_UI_CONFIG.colors.hungry;
+        if (hunger < 30) {
+            return UI_CONFIG.hungerBar.colors.fill.good;
+        } else if (hunger < 70) {
+            return UI_CONFIG.hungerBar.colors.fill.warning;
         }
-        return HUNGER_UI_CONFIG.colors.veryHungry;
+        return UI_CONFIG.hungerBar.colors.fill.critical;
     }
 
     getStatusText(hunger) {
-        if (hunger < HUNGER_UI_CONFIG.thresholds.wellFed) {
+        if (hunger < 30) {
             return 'Not Hungry';
-        } else if (hunger < HUNGER_UI_CONFIG.thresholds.hungry) {
+        } else if (hunger < 70) {
             return 'Getting Hungry';
         }
         return 'Very Hungry!';

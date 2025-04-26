@@ -1,126 +1,42 @@
 import * as THREE from 'three';
-import { HungerBar } from '../ui/hungerBar.js';
-import { CatStatusBar } from '../ui/catStatusBar.js';
 import { Bowl } from './bowl.js';
-
-export const CAT_ACTIVITIES = {
-    IDLE: 'idle',
-    WALKING: 'walking',
-    EATING: 'eating',
-    SEARCHING_FOOD: 'searchingFood',
-    MEOWING: 'meowing',
-    ROTATING: 'rotating',
-    HEARD_FOOD: 'heardFood'
-};
-
-const CAT_CONFIG = {
-    dimensions: {
-        body: {
-            width: 0.4,
-            height: 0.25,
-            depth: 0.25
-        },
-        head: {
-            size: 0.25,
-            heightOffset: 0.32
-        },
-        eye: {
-            size: 0.05,
-            spacing: 0.08,
-            heightOffset: 0.34
-        },
-        ear: {
-            radius: 0.05,
-            height: 0.1,
-            spacing: 0.08,
-            heightOffset: 0.45,
-            tiltAngle: 0.3
-        },
-        tail: {
-            segmentLength: 0.1,
-            segmentHeight: 0.06,
-            segmentSpacing: 0.08,
-            heightOffset: 0.25,
-            segments: 4
-        },
-        leg: {
-            width: 0.08,
-            height: 0.2,
-            spacing: {
-                x: 0.15,
-                z: 0.15
-            }
-        },
-        paw: {
-            width: 0.09,
-            height: 0.04,
-            depth: 0.1
-        }
-    },
-    materials: {
-        body: {
-            color: 0xFFA500,
-            flatShading: true
-        },
-        white: {
-            color: 0xFFFFFF,
-            flatShading: true
-        },
-        black: {
-            color: 0x000000,
-            flatShading: true
-        }
-    },
-    movement: {
-        maxSpeed: 1.5,
-        rotationSpeed: 2.0,
-        acceleration: 2.0,
-        deceleration: 4.0,
-        collisionRadius: 0.2,
-        collisionRays: 8,
-        turnThreshold: 0.1,
-        minSpeedThreshold: 0.01,
-        bowlDetectionRadius: 3.0,
-        bowlReachRadius: 0.2
-    },
-    hunger: {
-        initial: 50,
-        increaseRate: 2.0,
-        checkInterval: 1.0,
-        thresholds: {
-            hungry: 30,
-            veryHungry: 70,
-            meow: 50,
-            interested: 20
-        }
-    },
-    hearing: {
-        range: 8.0,
-        reactionDelay: 0.5
-    },
-    meow: {
-        size: 0.2,
-        duration: 1.0,
-        height: 0.5,
-        color: 0xFFFF00,
-        chance: 0.005
-    },
-    room: {
-        width: 6,
-        length: 8,
-        margin: 0.5
-    }
-};
+import { CAT_CONFIG, ACTIVITY_TYPES } from '../config/GameConfig.js';
+import { CatState } from '../state/CatState.js';
+import { CatAnimator } from './CatAnimator.js';
+import { CatUIManager } from './CatUIManager.js';
+import { CatBehavior } from './CatBehavior.js';
 
 export class Cat {
     constructor(scene, initialPosition = new THREE.Vector3(0, 0, 0)) {
         this.scene = scene;
         this.position = initialPosition;
         
-        this.initializeState();
+        // Initialize audio context
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        this.state = new CatState();
+        
+        // Initialize animation state
+        this.animation = {
+            tailWag: 0,
+            walkCycle: 0
+        };
+        
         this.initializePhysics();
-        this.initializeUI();
         this.createModel();
+        
+        // Instantiate CatAnimator after model and parts are created
+        this.animator = new CatAnimator(
+            this.model,
+            this.state,
+            this.animation,
+            this.tailSegments,
+            this.legs,
+            this.body,
+            this.head
+        );
+        // Instantiate CatUIManager
+        this.uiManager = new CatUIManager(this.state);
         
         this.scene.add(this.model);
         this.updatePosition();
@@ -129,48 +45,12 @@ export class Cat {
         this.scene.children
             .filter(child => child instanceof Bowl)
             .forEach(bowl => bowl.registerCat(this));
-    }
 
-    initializeState() {
-        this.hunger = 50;
-        this.lastMeowTime = 0;
-        this.isEating = false;
-        this.knownBowlsWithFood = new Set();
-        this.targetBowl = null;
-        
-        // Initialize audio context
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-        this.state = {
-            hunger: CAT_CONFIG.hunger.initial,
-            anger: 0,
-            targetPosition: null,
-            currentSpeed: 0,
-            isRotating: false,
-            facingAngle: 0,
-            targetAngle: 0,
-            lastBowlCheck: 0,
-            lastMeow: 0,
-            isMeowing: false,
-            heardFood: false,
-            heardFoodBowl: null,
-            lastFoodSound: 0,
-            activity: CAT_ACTIVITIES.IDLE
-        };
-
-        this.animation = {
-            tailWag: 0,
-            walkCycle: 0
-        };
+        this.behavior = new CatBehavior(this);
     }
 
     initializePhysics() {
         this.raycaster = new THREE.Raycaster();
-    }
-
-    initializeUI() {
-        this.hungerBar = new HungerBar();
-        this.statusBar = new CatStatusBar();
     }
 
     createModel() {
@@ -526,48 +406,6 @@ export class Cat {
         }
     }
 
-    animateWalking(deltaTime) {
-        const speedRatio = this.state.currentSpeed / CAT_CONFIG.movement.maxSpeed;
-        const cycleSpeed = 5 * speedRatio;
-        
-        this.animation.walkCycle += deltaTime * cycleSpeed;
-        
-        this.animateLegs(speedRatio);
-        this.animateBody(speedRatio);
-        this.animateTail(deltaTime, speedRatio);
-    }
-
-    animateLegs(speedRatio) {
-        this.legs.forEach((leg, index) => {
-            const offset = index * Math.PI / 2;
-            const height = Math.sin(this.animation.walkCycle + offset) * 0.05 * speedRatio;
-            leg.position.y = Math.max(0, height);
-        });
-    }
-
-    animateBody(speedRatio) {
-        const bodyBob = Math.sin(this.animation.walkCycle * 2) * 0.01 * speedRatio;
-        this.body.position.y = CAT_CONFIG.dimensions.body.height + bodyBob;
-        this.head.position.y = CAT_CONFIG.dimensions.head.heightOffset + bodyBob;
-    }
-
-    animateTail(deltaTime, speedRatio) {
-        this.animation.tailWag += deltaTime * (1 + speedRatio * 2);
-        this.tailSegments.forEach((segment, index) => {
-            const baseWag = Math.sin(this.animation.tailWag - index * 0.5);
-            const wagAmount = 0.1 + speedRatio * 0.2;
-            segment.rotation.y = baseWag * wagAmount;
-        });
-    }
-
-    animateIdle(deltaTime) {
-        this.animation.tailWag += deltaTime;
-        this.tailSegments.forEach((segment, index) => {
-            const wagAmount = 0.1;
-            segment.rotation.y = Math.sin(this.animation.tailWag - index * 0.5) * wagAmount;
-        });
-    }
-
     findNewTarget() {
         const room = CAT_CONFIG.room;
         const x = (Math.random() * (room.width - 2 * room.margin)) - (room.width/2 - room.margin);
@@ -580,95 +418,16 @@ export class Cat {
     }
 
     update(deltaTime) {
-        const clampedDelta = Math.min(deltaTime, 0.1);
-        
-        // Update hunger over time
-        if (!this.state.isEating) {
-            this.state.hunger = Math.min(100, this.state.hunger + clampedDelta * 2); // Increase by 2 points per second
-        }
-
-        // Update hunger bar and anger
-        this.hungerBar.update(this.state.hunger);
-        this.state.anger = Math.max(0, (this.state.hunger - CAT_CONFIG.hunger.thresholds.hungry) * 2);
-        this.statusBar.updateAnger(this.state.anger);
-
-        // Handle hunger behavior
-        if (this.state.hunger > CAT_CONFIG.hunger.thresholds.hungry && !this.state.isEating) {
-            console.log('Cat is hungry:', {
-                hunger: this.state.hunger,
-                threshold: CAT_CONFIG.hunger.thresholds.hungry
-            });
-            
-            // First check if we already have a target bowl
-            if (!this.state.targetBowl || !this.state.targetBowl.hasFood()) {
-                const nearestBowl = this.findNearestBowlWithFood();
-                if (nearestBowl) {
-                    this.moveTowardsBowl(nearestBowl);
-                } else {
-                    this.state.activity = 'searchingFood';
-                    this.meowIfHungry();
-                }
-            }
-        }
-
-        // Check if we reached a bowl with food
-        this.state.lastBowlCheck += clampedDelta;
-        if (this.state.lastBowlCheck > CAT_CONFIG.hunger.checkInterval) {
-            this.state.lastBowlCheck = 0;
-            if (this.state.targetBowl) {
-                const distance = this.position.distanceTo(this.state.targetBowl.position);
-                console.log('Checking bowl reach:', {
-                    distance,
-                    reachRadius: CAT_CONFIG.movement.bowlReachRadius,
-                    hasFood: this.state.targetBowl.hasFood()
-                });
-                
-                if (distance <= CAT_CONFIG.movement.bowlReachRadius && this.state.targetBowl.hasFood()) {
-                    this.state.activity = 'eating';
-                    this.eat(this.state.targetBowl);
-                    this.state.isEating = true;
-                    setTimeout(() => {
-                        this.state.isEating = false;
-                        this.state.targetBowl = null;
-                        this.state.targetPosition = null;
-                        this.state.activity = 'idle';
-                    }, 1000);
-                }
-            }
-        }
-
-        // Update movement and animation
-        if (!this.state.targetPosition && !this.state.isEating && Math.random() < 0.01) {
-            this.state.targetPosition = this.findNewTarget();
-            this.state.activity = 'walking';
-        }
-        
-        if (this.state.targetPosition && !this.state.isEating) {
-            const reached = this.moveTowards(this.state.targetPosition, clampedDelta);
-            if (reached) {
-                this.state.targetPosition = null;
-                // If we reached the target but it was a bowl and we're still hungry, keep trying
-                if (this.state.targetBowl && this.state.hunger > CAT_CONFIG.hunger.thresholds.hungry) {
-                    const nearestBowl = this.findNearestBowlWithFood();
-                    if (nearestBowl) {
-                        this.moveTowardsBowl(nearestBowl);
-                    } else {
-                        this.state.activity = 'idle';
-                    }
-                } else {
-                    this.state.activity = 'idle';
-                }
-            }
-        }
-
-        if (this.state.currentSpeed > 0) {
-            this.animateWalking(clampedDelta);
+        this.behavior.update(deltaTime);
+        // UI and animation updates remain here
+        this.uiManager.update();
+        const movement = this.state.movement;
+        const foodState = this.state.food;
+        if (movement.currentSpeed > 0) {
+            this.animator.animateWalking(Math.min(deltaTime, 0.1));
         } else {
-            this.animateIdle(clampedDelta);
+            this.animator.animateIdle(Math.min(deltaTime, 0.1));
         }
-
-        // Update status bar with current activity
-        this.statusBar.updateActivity(this.state.activity);
     }
 
     notifyFoodAdded(bowl) {
@@ -682,15 +441,21 @@ export class Cat {
         });
         
         if (distance <= CAT_CONFIG.hearing.range) {
-            this.state.heardFood = true;
-            this.state.heardFoodBowl = bowl;
-            this.state.lastFoodSound = Date.now();
-            this.state.activity = 'heard food';
+            this.state.updateFood({
+                heardFood: true,
+                heardFoodBowl: bowl,
+                lastFoodSound: Date.now()
+            });
+            this.state.setActivity(ACTIVITY_TYPES.HEARD_FOOD);
             
-            if (this.state.hunger >= CAT_CONFIG.hunger.thresholds.interested && !this.state.isEating) {
+            if (this.state.hunger >= CAT_CONFIG.hunger.thresholds.interested && !this.state.food.isEating) {
                 console.log('Cat is interested in new food');
-                this.state.targetBowl = bowl;
-                this.state.targetPosition = bowl.position.clone();
+                this.state.updateFood({
+                    targetBowl: bowl
+                });
+                this.state.updateMovement({
+                    targetPosition: bowl.position.clone()
+                });
                 this.showMeow();
             }
         }
@@ -743,29 +508,45 @@ export class Cat {
             catPosition: this.position
         });
         
-        // Set the bowl as target
-        this.state.targetBowl = bowl;
-        this.state.targetPosition = bowl.position.clone();
-        this.state.activity = 'searchingFood';
+        // Update state through state manager
+        this.state.updateFood({
+            targetBowl: bowl
+        });
+        this.state.updateMovement({
+            targetPosition: bowl.position.clone()
+        });
+        this.state.setActivity(ACTIVITY_TYPES.SEARCHING_FOOD);
         
         // Calculate direction to bowl
         const direction = bowl.position.clone().sub(this.position);
         direction.y = 0; // Keep movement in horizontal plane
         
         // Set target angle for smooth rotation
-        this.state.targetAngle = Math.atan2(direction.x, direction.z);
+        this.state.updateMovement({
+            targetAngle: Math.atan2(direction.x, direction.z)
+        });
     }
 
     meowIfHungry() {
         const now = Date.now();
-        if (now - this.lastMeowTime > 5000) { // Meow every 5 seconds when hungry
+        const animation = this.state.animation;
+        if (now - animation.lastMeow > 5000) {
             this.playMeowSound();
-            this.lastMeowTime = now;
+            this.state.updateAnimation({
+                lastMeow: now,
+                isMeowing: true
+            });
             this.showMeow();
+            this.state.setActivity(ACTIVITY_TYPES.MEOWING);
         }
     }
 
     playMeowSound() {
+        // Resume audio context if it was suspended
+        if (this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+        }
+
         // Create oscillator
         const oscillator = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
@@ -790,8 +571,8 @@ export class Cat {
     }
 
     eat(bowl) {
-        if (!this.state.isEating) {
-            this.state.isEating = true;
+        if (!this.state.food.isEating) {
+            this.state.food.isEating = true;
             // Start eating animation or visual feedback
             
             // Increase hunger while eating
@@ -799,8 +580,8 @@ export class Cat {
                 this.state.hunger = Math.min(100, this.state.hunger + 5);
                 if (this.state.hunger >= 100 || !bowl.hasFood()) {
                     clearInterval(eatInterval);
-                    this.state.isEating = false;
-                    this.state.targetBowl = null;
+                    this.state.food.isEating = false;
+                    this.state.food.targetBowl = null;
                 }
             }, 500); // Eat every 0.5 seconds
         }

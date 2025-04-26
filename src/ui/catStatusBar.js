@@ -1,61 +1,29 @@
-import { CAT_ACTIVITIES } from '../objects/cat.js';
-
-const STATUS_UI_CONFIG = {
-    container: {
-        position: { top: '80px', right: '20px' },  // Position below hunger bar
-        size: { width: '200px' },
-        style: {
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            padding: '10px',
-            borderRadius: '5px',
-            fontFamily: 'Arial, sans-serif',
-            zIndex: '1000'
-        }
-    },
-    text: {
-        style: {
-            color: 'white',
-            fontSize: '14px'
-        }
-    },
-    bar: {
-        size: { height: '20px' },
-        style: {
-            backgroundColor: 'rgba(255, 255, 255, 0.2)',
-            borderRadius: '3px'
-        }
-    },
-    colors: {
-        calm: '#4CAF50',      // Green
-        annoyed: '#FFA726',   // Orange
-        angry: '#F44336'      // Red
-    },
-    thresholds: {
-        annoyed: 30,
-        angry: 70
-    },
-    activities: {
-        [CAT_ACTIVITIES.IDLE]: 'Relaxing',
-        [CAT_ACTIVITIES.WALKING]: 'Exploring',
-        [CAT_ACTIVITIES.EATING]: 'Eating',
-        [CAT_ACTIVITIES.SEARCHING_FOOD]: 'Looking for Food',
-        [CAT_ACTIVITIES.MEOWING]: 'Meowing',
-        [CAT_ACTIVITIES.ROTATING]: 'Looking Around',
-        [CAT_ACTIVITIES.HEARD_FOOD]: 'Noticed Food!'
-    }
-};
+import { UI_CONFIG, ACTIVITY_TYPES, ACTIVITY_DESCRIPTIONS } from '../config/GameConfig.js';
+import { GameEvents } from '../events/GameEvents.js';
 
 export class CatStatusBar {
     constructor() {
         this.createElements();
+        this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+        GameEvents.subscribe(GameEvents.EVENT_TYPES.ACTIVITY_CHANGED, 
+            ({activity}) => this.updateActivity(activity));
+        GameEvents.subscribe(GameEvents.EVENT_TYPES.CAT_STATE_CHANGED, 
+            (state) => {
+                if (state.anger !== undefined) {
+                    this.updateAnger(state.anger);
+                }
+            });
     }
 
     createElements() {
         this.container = this.createElement('div', {
             position: 'fixed',
-            ...STATUS_UI_CONFIG.container.position,
-            ...STATUS_UI_CONFIG.container.size,
-            ...STATUS_UI_CONFIG.container.style
+            ...UI_CONFIG.statusBar.position,
+            ...UI_CONFIG.statusBar.size,
+            ...UI_CONFIG.statusBar.style
         });
 
         // Anger section
@@ -67,7 +35,8 @@ export class CatStatusBar {
             display: 'flex',
             justifyContent: 'space-between',
             marginBottom: '5px',
-            ...STATUS_UI_CONFIG.text.style
+            color: 'white',
+            fontSize: '14px'
         });
 
         this.angerLabel = this.createElement('div');
@@ -77,8 +46,9 @@ export class CatStatusBar {
 
         this.angerBarContainer = this.createElement('div', {
             width: '100%',
-            ...STATUS_UI_CONFIG.bar.size,
-            ...STATUS_UI_CONFIG.bar.style,
+            height: '20px',
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            borderRadius: '3px',
             overflow: 'hidden'
         });
 
@@ -92,12 +62,14 @@ export class CatStatusBar {
 
         this.activityLabel = this.createElement('div', {
             marginBottom: '5px',
-            ...STATUS_UI_CONFIG.text.style
+            color: 'white',
+            fontSize: '14px'
         });
         this.activityLabel.textContent = 'Activity';
 
         this.activityValue = this.createElement('div', {
-            ...STATUS_UI_CONFIG.text.style
+            color: 'white',
+            fontSize: '14px'
         });
 
         // Assemble the UI
@@ -116,7 +88,7 @@ export class CatStatusBar {
 
         // Set initial state
         this.updateAnger(0);
-        this.updateActivity(CAT_ACTIVITIES.IDLE);
+        this.updateActivity(ACTIVITY_TYPES.IDLE);
     }
 
     createElement(type, styles) {
@@ -126,25 +98,21 @@ export class CatStatusBar {
     }
 
     getAngerColor(anger) {
-        if (anger < STATUS_UI_CONFIG.thresholds.annoyed) {
-            return STATUS_UI_CONFIG.colors.calm;
-        } else if (anger < STATUS_UI_CONFIG.thresholds.angry) {
-            return STATUS_UI_CONFIG.colors.annoyed;
+        if (anger < UI_CONFIG.statusBar.thresholds.annoyed) {
+            return UI_CONFIG.hungerBar.colors.fill.good;
+        } else if (anger < UI_CONFIG.statusBar.thresholds.angry) {
+            return UI_CONFIG.hungerBar.colors.fill.warning;
         }
-        return STATUS_UI_CONFIG.colors.angry;
+        return UI_CONFIG.hungerBar.colors.fill.critical;
     }
 
     getMoodText(anger) {
-        if (anger < STATUS_UI_CONFIG.thresholds.annoyed) {
+        if (anger < UI_CONFIG.statusBar.thresholds.annoyed) {
             return 'Calm';
-        } else if (anger < STATUS_UI_CONFIG.thresholds.angry) {
+        } else if (anger < UI_CONFIG.statusBar.thresholds.angry) {
             return 'Annoyed';
         }
         return 'Angry';
-    }
-
-    getActivityText(activity) {
-        return STATUS_UI_CONFIG.activities[activity] || 'Idle';
     }
 
     updateAnger(anger) {
@@ -162,6 +130,6 @@ export class CatStatusBar {
     }
 
     updateActivity(activity) {
-        this.activityValue.textContent = this.getActivityText(activity);
+        this.activityValue.textContent = ACTIVITY_DESCRIPTIONS[activity] || 'Idle';
     }
 } 
