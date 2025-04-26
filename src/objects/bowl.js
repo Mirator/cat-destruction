@@ -206,4 +206,16 @@ export class Bowl extends Highlightable {
             this.setFoodFill(this.fill);
         }
     }
+
+    setHighlight(enabled) {
+        if (this.isHighlighted === enabled) return;
+        this.isHighlighted = enabled;
+        this.pulseTime = 0;
+        // Swap materials for all bowl parts
+        this.model.traverse(obj => {
+            if (obj.isMesh && obj.material) {
+                obj.material = enabled ? this.materials.highlight : this.materials.normal;
+            }
+        });
+    }
 } 

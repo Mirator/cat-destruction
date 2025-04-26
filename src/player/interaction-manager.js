@@ -278,9 +278,10 @@ export class InteractionManager {
 
         // Try to place in bowl first
         if (this.tryPlaceInBowl()) {
-            // Food was placed in bowl, consume it
             this.carriedFood.consume();
             this.carriedFood = null;
+            // Clear all bowl highlights
+            this.bowls.forEach(bowl => bowl.setHighlight(false));
             return;
         }
 

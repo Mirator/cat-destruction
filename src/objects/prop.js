@@ -121,24 +121,23 @@ export class FlowerProp extends Prop {
         leaf2.position.set(-0.012, 0.23, -0.012);
         leaf2.rotation.set(Math.PI / 2, -0.2, -0.5);
         group.add(leaf2);
-        // Flower head (petals)
+        // Simple cartoon flower head (petals)
         const petalColor = config.flowerColor || 0xFFD1DC; // soft pink
         const petalMaterial = new THREE.MeshStandardMaterial({ color: petalColor, roughness: 0.4, emissive: 0x222222 });
-        const numPetals = 7;
-        const petalLength = 0.07;
-        const petalWidth = 0.025;
+        const numPetals = 8;
+        const petalRadius = 0.025;
+        const petalDistance = 0.055;
         for (let i = 0; i < numPetals; i++) {
             const angle = (i / numPetals) * Math.PI * 2;
-            const petalGeometry = new THREE.SphereGeometry(petalWidth, 8, 8, 0, Math.PI);
+            const petalGeometry = new THREE.CircleGeometry(petalRadius, 16);
             const petal = new THREE.Mesh(petalGeometry, petalMaterial);
-            petal.scale.set(1, 1.7, 0.5);
-            petal.position.set(Math.cos(angle) * petalLength, 0.36, Math.sin(angle) * petalLength);
-            petal.rotation.x = Math.PI / 2;
-            petal.rotation.z = angle;
+            petal.position.set(Math.cos(angle) * petalDistance, 0.36, Math.sin(angle) * petalDistance);
+            petal.scale.set(1, 1.8, 1); // oval shape
+            petal.rotation.x = -Math.PI / 2;
             group.add(petal);
         }
-        // Flower center (3D sphere)
-        const centerGeometry = new THREE.SphereGeometry(0.025, 16, 16);
+        // Simple flower center (sphere)
+        const centerGeometry = new THREE.SphereGeometry(0.028, 18, 18);
         const centerMaterial = new THREE.MeshStandardMaterial({ color: 0xFFE066, roughness: 0.3, emissive: 0x222222 });
         const center = new THREE.Mesh(centerGeometry, centerMaterial);
         center.position.y = 0.36;
