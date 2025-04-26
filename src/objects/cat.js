@@ -7,7 +7,7 @@ import { CatUIManager } from './CatUIManager.js';
 import { CatBehavior } from './CatBehavior.js';
 
 export class Cat {
-    constructor(scene, initialPosition = new THREE.Vector3(0, 0, 0)) {
+    constructor(scene, initialPosition = new THREE.Vector3(0, 0, 0), playerState = null) {
         this.scene = scene;
         this.position = initialPosition;
         // AudioContext will be created after user gesture
@@ -46,7 +46,7 @@ export class Cat {
             .filter(child => child instanceof Bowl)
             .forEach(bowl => bowl.registerCat(this));
 
-        this.behavior = new CatBehavior(this);
+        this.behavior = new CatBehavior(this, playerState);
         this.blockedFrames = 0;
         this.tempWaypoint = null;
     }

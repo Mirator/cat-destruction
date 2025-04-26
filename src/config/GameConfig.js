@@ -203,7 +203,9 @@ export const ACTIVITY_TYPES = {
     MEOWING: 'meowing',
     ROTATING: 'rotating',
     HEARD_FOOD: 'heardFood',
-    KNOCKING_PROP: 'knockingProp'
+    KNOCKING_PROP: 'knockingProp',
+    CHASING_PLAYER: 'chasingPlayer',
+    ATTACKING_PLAYER: 'attackingPlayer'
 };
 
 // Activity Descriptions for UI
@@ -216,7 +218,9 @@ export const ACTIVITY_DESCRIPTIONS = {
     [ACTIVITY_TYPES.MEOWING]: 'Meowing',
     [ACTIVITY_TYPES.ROTATING]: 'Looking Around',
     [ACTIVITY_TYPES.HEARD_FOOD]: 'Noticed Food!',
-    [ACTIVITY_TYPES.KNOCKING_PROP]: 'Up to No Good'
+    [ACTIVITY_TYPES.KNOCKING_PROP]: 'Up to No Good',
+    [ACTIVITY_TYPES.CHASING_PLAYER]: 'Chasing You!',
+    [ACTIVITY_TYPES.ATTACKING_PLAYER]: 'Scratching You!'
 };
 
 // Flower Props Configuration

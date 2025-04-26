@@ -4,10 +4,39 @@ import { PlayerController } from './src/player/movement.js';
 import { Cat } from './src/objects/cat.js';
 import { InteractionManager } from './src/player/interaction-manager.js';
 import { INTERACTION_CONFIG } from './src/objects/food.js';
+import { PlayerState } from './src/state/PlayerState.js';
+import { PlayerStatusBar } from './src/ui/playerStatusBar.js';
+import { GameOverScreen } from './src/ui/GameOverScreen.js';
 
 // Initialize the scene
 const { scene, camera, renderer } = createScene();
 document.body.appendChild(renderer.domElement);
+scene.userData.playerCamera = camera;
+
+// Initialize player state and UI
+const playerState = new PlayerState(100);
+const playerStatusBar = new PlayerStatusBar(playerState);
+
+let gameOver = false;
+
+function restartGame() {
+    // Reset player state and cat position (simple reset)
+    playerState.setHealth(playerState.maxHealth);
+    if (cat && cat.position) cat.position.set(0, 0, -2);
+    gameOver = false;
+    gameOverScreen.hide();
+    lastTime = performance.now();
+    animate();
+}
+
+const gameOverScreen = new GameOverScreen(restartGame);
+
+playerState.onChange((health) => {
+    if (health <= 0 && !gameOver) {
+        gameOver = true;
+        gameOverScreen.show();
+    }
+});
 
 // Get all collidable objects (walls and furniture)
 const collidableObjects = scene.children.filter(child => {
@@ -25,13 +54,14 @@ const playerController = new PlayerController(camera, renderer.domElement);
 const interactionManager = new InteractionManager(scene, playerController);
 
 // Initialize cat
-const cat = new Cat(scene, new THREE.Vector3(0, 0, -2)); // Start 2 meters in front of player
+const cat = new Cat(scene, new THREE.Vector3(0, 0, -2), playerState); // Pass playerState
 
 // Time tracking for smooth movement
 let lastTime = performance.now();
 
 // Animation loop
 function animate() {
+    if (gameOver) return;
     requestAnimationFrame(animate);
     
     // Calculate delta time for smooth movement
@@ -47,7 +77,15 @@ function animate() {
     
     // Update cat behavior
     cat.update(deltaTime);
-    
+
+    // Player mood recovery if cat is not close
+    const catXZ = cat.position.clone(); catXZ.y = 0;
+    const playerXZ = camera.position.clone(); playerXZ.y = 0;
+    const dist = catXZ.distanceTo(playerXZ);
+    if (dist > 0.5) {
+        playerState.changeHealth(1 * deltaTime);
+    }
+
     // Render the scene
     renderer.render(scene, camera);
 }

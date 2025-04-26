@@ -1,14 +1,17 @@
-import { ACTIVITY_TYPES, CAT_CONFIG } from '../config/GameConfig.js';
+import { ACTIVITY_TYPES, CAT_CONFIG, UI_CONFIG } from '../config/GameConfig.js';
 import { FlowerProp } from './prop.js';
 
 export class CatBehavior {
-    constructor(cat) {
+    constructor(cat, playerState = null) {
         this.cat = cat;
         this.state = cat.state;
+        this.playerState = playerState;
         this._lastMoveLogTime = 0;
         this.angryDuration = 0;
         this.mischiefTarget = null;
         this.mischiefTimer = 0;
+        this.attackMode = false;
+        this.attackTimer = 0;
     }
 
     update(deltaTime) {
@@ -16,6 +19,7 @@ export class CatBehavior {
         this.handleMischief(deltaTime);
         this.handleMovement(deltaTime);
         this.handleEating(deltaTime);
+        this.handleAttackMode(deltaTime);
     }
 
     handleHunger(deltaTime) {
@@ -104,8 +108,16 @@ export class CatBehavior {
     }
 
     handleMovement(deltaTime) {
+        // Allow movement if a targetPosition is set, even in attack mode
         const movement = this.state.movement;
         const foodState = this.state.food;
+        if (this.attackMode) {
+            // If in attack mode, only move if a targetPosition is set (handled in handleAttackMode)
+            if (movement.targetPosition) {
+                this.cat.moveTowards(movement.targetPosition, deltaTime);
+            }
+            return;
+        }
         // Throttle moving towards target log
         if (!this._lastMoveLogTime) this._lastMoveLogTime = 0;
         const now = Date.now();
@@ -172,6 +184,51 @@ export class CatBehavior {
                         this.state.setActivity(ACTIVITY_TYPES.IDLE);
                     }, 1000);
                 }
+            }
+        }
+    }
+
+    handleAttackMode(deltaTime) {
+        // Do not attack if cat is relaxed (anger below annoyed threshold)
+        if (this.state.anger < UI_CONFIG.statusBar.thresholds.annoyed) {
+            this.attackMode = false;
+            this.attackTimer = 0;
+            return;
+        }
+        // Check if any bowl has food; if so, exit attack mode
+        const anyBowlWithFood = !!this.cat.findNearestBowlWithFood && this.cat.findNearestBowlWithFood();
+        if (anyBowlWithFood) {
+            this.attackMode = false;
+            this.attackTimer = 0;
+            return;
+        }
+        // Check if all FlowerProps are knocked over
+        const flowers = [];
+        this.cat.scene.traverse(obj => {
+            if (obj.userData?.propInstance instanceof FlowerProp) {
+                flowers.push(obj.userData.propInstance);
+            }
+        });
+        const allKnocked = flowers.length > 0 && flowers.every(f => f.isKnockedOver);
+        if (allKnocked && this.playerState && this.cat.scene && this.cat.scene.userData?.playerCamera) {
+            this.attackMode = true;
+        } else {
+            this.attackMode = false;
+            this.attackTimer = 0;
+            return;
+        }
+        if (this.attackMode) {
+            const playerCamera = this.cat.scene.userData.playerCamera;
+            const playerPos = playerCamera.position.clone();
+            // Use only horizontal distance (ignore y)
+            const catXZ = this.cat.position.clone(); catXZ.y = 0;
+            const playerXZ = playerPos.clone(); playerXZ.y = 0;
+            const dist = catXZ.distanceTo(playerXZ);
+            this.cat.state.updateMovement({ targetPosition: playerPos });
+            this.cat.state.setActivity(ACTIVITY_TYPES.CHASING_PLAYER);
+            this.cat.moveTowards(playerPos, deltaTime);
+            if (dist <= 0.5) {
+                this.playerState.changeHealth(-6 * deltaTime);
             }
         }
     }
