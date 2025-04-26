@@ -50,4 +50,10 @@ export class CatAnimator {
             segment.rotation.y = Math.sin(this.animation.tailWag - index * 0.5) * wagAmount;
         });
     }
+
+    animateEating(deltaTime) {
+        // Simple head bobbing animation
+        const bobAmount = Math.sin(Date.now() * 0.01) * 0.03;
+        this.head.position.y = CAT_CONFIG.dimensions.head.heightOffset + bobAmount;
+    }
 } 

@@ -10,10 +10,10 @@ export class Cat {
     constructor(scene, initialPosition = new THREE.Vector3(0, 0, 0)) {
         this.scene = scene;
         this.position = initialPosition;
-        
-        // Initialize audio context
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        
+        // AudioContext will be created after user gesture
+        this.audioContext = null;
+        this.audioReady = false;
+        this._setupAudioContextOnUserGesture();
         this.state = new CatState();
         
         // Initialize animation state
@@ -49,6 +49,22 @@ export class Cat {
         this.behavior = new CatBehavior(this);
     }
 
+    _setupAudioContextOnUserGesture() {
+        const resumeAudio = () => {
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume();
+            }
+            this.audioReady = true;
+            window.removeEventListener('pointerdown', resumeAudio);
+            window.removeEventListener('keydown', resumeAudio);
+        };
+        window.addEventListener('pointerdown', resumeAudio);
+        window.addEventListener('keydown', resumeAudio);
+    }
+
     initializePhysics() {
         this.raycaster = new THREE.Raycaster();
     }
@@ -72,9 +88,9 @@ export class Cat {
 
     createMaterials() {
         return {
-            orange: new THREE.MeshToonMaterial(CAT_CONFIG.materials.body),
-            white: new THREE.MeshToonMaterial(CAT_CONFIG.materials.white),
-            black: new THREE.MeshToonMaterial(CAT_CONFIG.materials.black)
+            orange: new THREE.MeshToonMaterial({ color: CAT_CONFIG.materials.body.color }),
+            white: new THREE.MeshToonMaterial({ color: CAT_CONFIG.materials.white.color }),
+            black: new THREE.MeshToonMaterial({ color: CAT_CONFIG.materials.black.color })
         };
     }
 
@@ -514,6 +530,16 @@ export class Cat {
     }
 
     playMeowSound() {
+        if (!this.audioReady) return;
+        if (!this.audioContext) {
+            try {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                // Could not create audio context, skip sound
+                return;
+            }
+        }
+        if (!this.audioContext) return;
         // Resume audio context if it was suspended
         if (this.audioContext.state === 'suspended') {
             this.audioContext.resume();
@@ -546,17 +572,44 @@ export class Cat {
         if (!this.state.food.isEating && bowl.hasFood()) {
             this.state.food.isEating = true;
             this.state.setActivity(ACTIVITY_TYPES.EATING);
+
+            // Move cat to 10cm in front of bowl and face it
+            const direction = bowl.position.clone().sub(this.position);
+            direction.y = 0;
+            direction.normalize();
+            const eatDistance = 0.1; // 10cm
+            const eatPosition = bowl.position.clone().sub(direction.clone().multiplyScalar(eatDistance));
+            this.position.copy(eatPosition);
+            this.updatePosition();
+            this.state.movement.facingAngle = Math.atan2(direction.x, direction.z);
+            this.model.rotation.y = this.state.movement.facingAngle;
+
+            // Eat as long as there is food in the bowl
+            const cat = this;
             const food = bowl.currentFood;
-            const nutrition = food.consume();
-            this.state.setHunger(Math.max(0, this.state.hunger - nutrition));
-            this.state.setAnger(Math.max(0, this.state.anger - nutrition / 2));
-            if (food.isConsumed) {
-                bowl.currentFood = null;
-            }
-            setTimeout(() => {
-                this.state.food.isEating = false;
-                this.state.food.targetBowl = null;
-            }, 1000); // Eating duration
+            const totalTime = 10000; // 10 seconds to eat full bowl
+            const intervalMs = 50;
+            const steps = totalTime / intervalMs;
+            const fillPerStep = 1 / steps;
+            const hungerPerStep = cat.state.hunger / steps;
+            const interval = setInterval(() => {
+                if (!cat.state.food.isEating || !bowl.hasFood()) {
+                    clearInterval(interval);
+                    cat.state.food.isEating = false;
+                    cat.state.food.targetBowl = null;
+                    if (bowl.fill <= 0) {
+                        if (food) food.isConsumed = true;
+                        bowl.currentFood = null;
+                        bowl.setFoodFill(0);
+                        cat.state.setHunger(0);
+                    }
+                    return;
+                }
+                // Reduce bowl fill and hunger
+                bowl.setFoodFill(bowl.fill - fillPerStep);
+                cat.state.setHunger(Math.max(0, cat.state.hunger - hungerPerStep));
+                cat.animator.animateEating(0.016);
+            }, intervalMs);
         }
     }
 

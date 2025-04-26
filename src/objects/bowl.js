@@ -10,6 +10,7 @@ export class Bowl {
         this.cats = new Set(); // Store references to cats in the scene
         this.createMaterials();
         this.createModel();
+        this.fill = 0; // 0 = empty, 1 = full
     }
 
     createMaterials() {
@@ -141,7 +142,6 @@ export class Bowl {
 
     addFood(food) {
         if (this.currentFood || !food) return false;
-        
         food.model.visible = false;
         this.foodContent.material = new THREE.MeshStandardMaterial({
             color: FOOD_TYPES[food.type].color.content,
@@ -149,27 +149,27 @@ export class Bowl {
             roughness: 0.8,
             visible: true
         });
-        
         this.currentFood = food;
         this.setHighlight(false);
-
+        this.fill = 1; // Bowl is full when food is added
+        this.setFoodFill(1);
         // Notify all cats in the scene about the food
         this.cats.forEach(cat => cat.notifyFoodAdded(this));
-        
         return true;
     }
 
     removeFood() {
         if (!this.currentFood) return null;
-        
         this.foodContent.material.visible = false;
         const food = this.currentFood;
         this.currentFood = null;
+        this.fill = 0;
+        this.setFoodFill(0);
         return food;
     }
 
     hasFood() {
-        return this.currentFood !== null && !this.currentFood.isConsumed;
+        return this.currentFood !== null && this.fill > 0;
     }
 
     canAcceptFood() {
@@ -203,5 +203,18 @@ export class Bowl {
 
     unregisterCat(cat) {
         this.cats.delete(cat);
+    }
+
+    setFoodFill(fill) {
+        // Clamp fill between 0 and 1
+        this.fill = Math.max(0, Math.min(1, fill));
+        // Scale the food content mesh vertically
+        this.foodContent.scale.y = this.fill;
+        // Adjust position so the top stays at the same place
+        const baseY = BOWL_CONFIG.size.height * 0.3;
+        const fullHeight = BOWL_CONFIG.food.fillHeight;
+        this.foodContent.position.y = baseY - (fullHeight * (1 - this.fill)) / 2;
+        // Optionally hide if empty
+        this.foodContent.visible = this.fill > 0;
     }
 } 
