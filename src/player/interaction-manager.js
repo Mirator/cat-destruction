@@ -264,6 +264,7 @@ export class InteractionManager {
             }
             this.telephone.setHighlight(this.telephone === nearestPhone);
         }
+        this.nearestPhone = nearestPhone;
 
         // --- PARCEL HIGHLIGHTING & CARRYING ---
         let nearestParcel = null;
@@ -294,7 +295,7 @@ export class InteractionManager {
         }
 
         this.updateHighlights(deltaTime, nearestFood, nearestBowl);
-        this.ui.updateInteractionPrompt(nearestFood, nearestBowl, this.carriedFood !== null, nearestProp, nearestPhone);
+        this.ui.updateInteractionPrompt(nearestFood, nearestBowl, this.carriedFood !== null, nearestProp, this.nearestPhone);
         this.ui.updateDistance(this.player.camera, this.foodItems);
     }
 
@@ -321,37 +322,25 @@ export class InteractionManager {
         if (this.dialingActive) return; // Block normal controls during minigame
         if (event.key.toLowerCase() === 'e' && this.player?.camera) {
             if (this.carriedFood) {
-                this.handleDrop();
+                // Remove dropping food: only allow placing in bowl
+                if (this.tryPlaceInBowl()) {
+                    this.carriedFood.consume();
+                    this.carriedFood = null;
+                    // Clear all bowl highlights
+                    this.bowls.forEach(bowl => bowl.setHighlight(false));
+                }
             } else if (this.carriedParcel) {
                 this.handleDropParcel();
             } else if (this.tryResetNearestFlower()) {
                 // Flower was reset, do nothing else
-            } else if (this.tryUseNearestPhone()) {
-                // Phone was used, do nothing else
+            } else if (this.nearestPhone) {
+                this.startDialingMinigame();
             } else if (this.tryPickupParcel()) {
                 // Picked up parcel, do nothing else
             } else {
                 this.handlePickup();
             }
         }
-    }
-
-    handleDrop() {
-        if (!this.carriedFood) return;
-
-        // Try to place in bowl first
-        if (this.tryPlaceInBowl()) {
-            this.carriedFood.consume();
-            this.carriedFood = null;
-            // Clear all bowl highlights
-            this.bowls.forEach(bowl => bowl.setHighlight(false));
-            return;
-        }
-
-        // If not placed in bowl, drop on ground
-        const dropPosition = this.calculateDropPosition();
-        this.carriedFood.drop(dropPosition);
-        this.carriedFood = null;
     }
 
     handlePickup() {
@@ -380,17 +369,6 @@ export class InteractionManager {
         });
         if (nearest) {
             nearest.reset();
-            return true;
-        }
-        return false;
-    }
-
-    tryUseNearestPhone() {
-        if (!this.telephone || this.dialingActive) return false;
-        this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.player.camera);
-        const phoneIntersects = this.raycaster.intersectObject(this.telephone.model, true);
-        if (phoneIntersects.length > 0) {
-            this.startDialingMinigame();
             return true;
         }
         return false;

@@ -114,7 +114,7 @@ export class InteractionUI {
             if (nearestBowl) {
                 this.showPrompt('Press [E] to fill the bowl');
             } else {
-                this.showPrompt('Press [E] to drop food');
+                this.hidePrompt();
             }
         } else if (nearestPhone) {
             this.showPrompt('Press [E] to use the phone');

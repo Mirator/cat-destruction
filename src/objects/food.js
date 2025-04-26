@@ -31,7 +31,7 @@ export const FOOD_TYPES = {
 };
 
 export const INTERACTION_CONFIG = {
-    pickupRange: 0.7,     // Maximum distance for pickup (0.6 meters)
+    pickupRange: 1.1,     // Maximum distance for pickup (1.1 meters)
     hoverHeight: 1.0,     // Height when being carried (at eye level)
     carryOffset: 1.0,     // Forward offset when being carried (1 meter in front)
     highlightColor: 0xFFFFFF,  // Color for interaction highlight
@@ -41,29 +41,126 @@ export const INTERACTION_CONFIG = {
 export class Food extends Highlightable {
     constructor(type, position) {
         const config = FOOD_TYPES[type];
-        const geometry = new THREE.BoxGeometry(
-            config.model.width,
-            config.model.height,
-            config.model.depth
-        );
-        const material = new THREE.MeshStandardMaterial({
+        // Can dimensions
+        const radius = config.model.width / 2;
+        const height = config.model.height;
+        // Can body (label)
+        const bodyGeometry = new THREE.CylinderGeometry(radius, radius, height, 32, 1, true);
+        // Create a canvas label texture
+        const labelCanvas = document.createElement('canvas');
+        labelCanvas.width = 128; labelCanvas.height = 64;
+        const ctx = labelCanvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, 128, 64);
+        ctx.fillStyle = '#333';
+        ctx.fillRect(0, 0, 128, 20);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(config.name, 64, 32);
+        ctx.fillStyle = '#333';
+        ctx.fillRect(0, 44, 128, 20);
+        // Draw cat face function
+        function drawCatFace(ctx, x, y, size) {
+            ctx.save();
+            // Head (with black border)
+            ctx.beginPath();
+            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.fillStyle = '#f6b26b'; // orange cat face
+            ctx.fill();
+            // Ears (with black border)
+            ctx.beginPath();
+            ctx.moveTo(x - size * 0.7, y - size * 0.2);
+            ctx.lineTo(x - size * 0.4, y - size * 0.9);
+            ctx.lineTo(x - size * 0.1, y - size * 0.2);
+            ctx.closePath();
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.fillStyle = '#f6b26b';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(x + size * 0.7, y - size * 0.2);
+            ctx.lineTo(x + size * 0.4, y - size * 0.9);
+            ctx.lineTo(x + size * 0.1, y - size * 0.2);
+            ctx.closePath();
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.fillStyle = '#f6b26b';
+            ctx.fill();
+            // Eyes
+            ctx.beginPath();
+            ctx.arc(x - size * 0.25, y, size * 0.13, 0, Math.PI * 2);
+            ctx.arc(x + size * 0.25, y, size * 0.13, 0, Math.PI * 2);
+            ctx.fillStyle = '#222';
+            ctx.fill();
+            // Nose
+            ctx.beginPath();
+            ctx.arc(x, y + size * 0.18, size * 0.09, 0, Math.PI * 2);
+            ctx.fillStyle = '#d28b5b';
+            ctx.fill();
+            // Whiskers
+            ctx.strokeStyle = '#a67c52';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x - size * 0.5, y + size * 0.18);
+            ctx.lineTo(x - size * 0.9, y + size * 0.18);
+            ctx.moveTo(x + size * 0.5, y + size * 0.18);
+            ctx.lineTo(x + size * 0.9, y + size * 0.18);
+            ctx.stroke();
+            ctx.restore();
+        }
+        // Draw cat faces on both sides
+        drawCatFace(ctx, 32, 32, 18);
+        drawCatFace(ctx, 96, 32, 18);
+        const labelTexture = new THREE.CanvasTexture(labelCanvas);
+        labelTexture.wrapS = THREE.RepeatWrapping;
+        labelTexture.repeat.x = 1.0;
+        const bodyMaterial = new THREE.MeshStandardMaterial({
             color: config.color.package,
-            flatShading: true
+            map: labelTexture,
+            metalness: 0.4,
+            roughness: 0.3,
+            side: THREE.DoubleSide
         });
-        const model = new THREE.Mesh(geometry, material);
-        model.position.copy(position);
-        model.name = `food_${type.toLowerCase()}`;
-        model.castShadow = true;
-        model.receiveShadow = true;
-        model.userData.foodInstance = null; // Set after super
-        super(model);
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        // Can top
+        const topGeometry = new THREE.CircleGeometry(radius, 32);
+        const topMaterial = new THREE.MeshStandardMaterial({
+            color: 0xcccccc,
+            metalness: 0.8,
+            roughness: 0.2
+        });
+        const top = new THREE.Mesh(topGeometry, topMaterial);
+        top.position.y = height / 2 + 0.001;
+        top.rotation.x = -Math.PI / 2;
+        // Can bottom
+        const bottom = new THREE.Mesh(topGeometry, topMaterial);
+        bottom.position.y = -height / 2 - 0.001;
+        bottom.rotation.x = Math.PI / 2;
+        // Group all parts
+        const group = new THREE.Group();
+        group.add(body);
+        group.add(top);
+        group.add(bottom);
+        group.position.copy(position);
+        group.name = `food_${type.toLowerCase()}`;
+        group.castShadow = true;
+        group.receiveShadow = true;
+        group.userData.foodInstance = null; // Set after super
+        super(group);
         this.type = type;
         this.position = position.clone();
         this.isConsumed = false;
         this.isPickedUp = false;
         this.model.userData.foodInstance = this;
-        // Add a small random rotation for variety
-        this.model.rotation.y = Math.random() * Math.PI;
+        // No random rotation for cans
+        this.model.rotation.set(0, 0, 0);
     }
 
     consume() {

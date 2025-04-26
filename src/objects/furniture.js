@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Food } from './food.js';
 import { Bowl } from './bowl.js';
+import { stockShelf } from './shelfStocking.js';
 
 // Common material configurations
 const WOOD_MATERIAL_CONFIG = {
@@ -156,10 +157,17 @@ function createShelvingUnit() {
         shelfGroup.add(shelf);
         
         // Store shelf position for food placement
-        if (i > 0 && i < dims.shelfCount) { // Don't place food on top or bottom shelf
+        if (i === 0) {
+            // Place on the floor, just above y=0
             shelfPositions.push({
                 x: 0,
-                y: height + dims.shelfThickness,
+                y: 0.5 * dims.shelfThickness, // slightly above floor
+                z: 0
+            });
+        } else if (i < dims.shelfCount) {
+            shelfPositions.push({
+                x: 0,
+                y: height + 2.5 * dims.shelfThickness,
                 z: 0
             });
         }
@@ -183,23 +191,8 @@ function createShelvingUnit() {
     backing.receiveShadow = true;
     shelfGroup.add(backing);
     
-    // Generate food on shelves
-    const foodItems = [];
-    shelfPositions.forEach(pos => {
-        // Add 1-2 food items per shelf
-        const foodCount = Math.floor(Math.random() * 2) + 1;
-        for (let i = 0; i < foodCount; i++) {
-            const food = Food.generateRandomFood(
-                new THREE.Vector3(pos.x, pos.y, pos.z),
-                dims.width
-            );
-            foodItems.push(food);
-            shelfGroup.add(food.model);
-        }
-    });
-    
-    // Store food items reference
-    shelfGroup.userData.foodItems = foodItems;
+    // Use stockShelf for initial stocking
+    stockShelf(shelfGroup, shelfPositions, dims.width);
     
     return shelfGroup;
 }
