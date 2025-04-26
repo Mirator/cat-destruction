@@ -13,7 +13,7 @@ export const UI_CONFIG = {
         }
     },
     statusBar: {
-        position: { top: '80px', right: '20px' },
+        position: { top: '100px', right: '20px' },
         size: { width: '200px' },
         style: {
             backgroundColor: 'rgba(0, 0, 0, 0.7)',
