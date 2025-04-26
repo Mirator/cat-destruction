@@ -20,6 +20,7 @@ export class InteractionManager {
         this.telephone = null;
         this.dialingActive = false;
         this.parcelShouldSpawn = false;
+        this.carriedParcel = null;
         
         // Configuration
         this.ROOM_BOUNDS = {
@@ -53,6 +54,7 @@ export class InteractionManager {
         this.dropSurfaces = [];
         this.flowerProps = [];
         this.telephone = null;
+        this.parcel = null;
         this.scene.traverse((object) => {
             if (object.userData?.foodInstance) {
                 this.foodItems.push(object.userData.foodInstance);
@@ -72,6 +74,9 @@ export class InteractionManager {
             }
             if (object.userData?.telephoneInstance) {
                 this.telephone = object.userData.telephoneInstance;
+            }
+            if (object.userData?.parcelInstance) {
+                this.parcel = object.userData.parcelInstance;
             }
         });
     }
@@ -260,6 +265,34 @@ export class InteractionManager {
             this.telephone.setHighlight(this.telephone === nearestPhone);
         }
 
+        // --- PARCEL HIGHLIGHTING & CARRYING ---
+        let nearestParcel = null;
+        let minParcelDist = 2.2;
+        if (this.parcel && !this.carriedParcel) {
+            this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.player.camera);
+            const intersects = this.raycaster.intersectObject(this.parcel.model, true);
+            if (intersects.length > 0) {
+                nearestParcel = this.parcel;
+                minParcelDist = this.player.camera.position.distanceTo(this.parcel.model.position);
+            }
+            this.parcel.setHighlight(this.parcel === nearestParcel);
+            if (this.parcel.isHighlighted) {
+                this.parcel.updateHighlight(deltaTime);
+            }
+        } else if (this.parcel) {
+            this.parcel.setHighlight(false);
+        }
+        if (this.carriedParcel) {
+            this.parcel.setHighlight(false);
+            // Carry in front of camera
+            const cam = this.player.camera;
+            const offset = new THREE.Vector3(0, -0.3, -1.1);
+            offset.applyQuaternion(cam.quaternion);
+            this.carriedParcel.model.position.copy(cam.position.clone().add(offset));
+            this.carriedParcel.model.position.y = Math.max(this.carriedParcel.model.position.y, 0.18);
+            this.carriedParcel.model.rotation.y = cam.rotation.y;
+        }
+
         this.updateHighlights(deltaTime, nearestFood, nearestBowl);
         this.ui.updateInteractionPrompt(nearestFood, nearestBowl, this.carriedFood !== null, nearestProp, nearestPhone);
         this.ui.updateDistance(this.player.camera, this.foodItems);
@@ -289,10 +322,14 @@ export class InteractionManager {
         if (event.key.toLowerCase() === 'e' && this.player?.camera) {
             if (this.carriedFood) {
                 this.handleDrop();
+            } else if (this.carriedParcel) {
+                this.handleDropParcel();
             } else if (this.tryResetNearestFlower()) {
                 // Flower was reset, do nothing else
             } else if (this.tryUseNearestPhone()) {
                 // Phone was used, do nothing else
+            } else if (this.tryPickupParcel()) {
+                // Picked up parcel, do nothing else
             } else {
                 this.handlePickup();
             }
@@ -369,11 +406,40 @@ export class InteractionManager {
             code,
             () => { // onComplete
                 this.dialingActive = false;
-                this.parcelShouldSpawn = true; // Next step: spawn parcel
+                if (this.scene && this.scene.userData && typeof this.scene.userData.spawnParcelAtDoor === 'function') {
+                    this.scene.userData.spawnParcelAtDoor();
+                } else {
+                    console.warn('spawnParcelAtDoor not found on scene.userData');
+                }
             },
             () => { // onCancel
                 this.dialingActive = false;
             }
         );
+    }
+
+    tryPickupParcel() {
+        if (this.parcel && !this.carriedParcel && !this.carriedFood) {
+            this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.player.camera);
+            const intersects = this.raycaster.intersectObject(this.parcel.model, true);
+            if (intersects.length > 0) {
+                this.carriedParcel = this.parcel;
+                this.ui.showHelpTip('Bring the parcel to the shelf to restock!');
+                return true;
+            }
+        }
+        return false;
+    }
+
+    handleDropParcel() {
+        if (!this.carriedParcel) return;
+        this.carriedParcel.setHighlight(false);
+        // Drop at calculated position
+        const dropPos = this.calculateDropPosition();
+        this.carriedParcel.model.position.copy(dropPos);
+        this.carriedParcel.model.position.y = 0.15;
+        this.carriedParcel.model.rotation.y = 0;
+        this.ui.hideHelpTip();
+        this.carriedParcel = null;
     }
 } 

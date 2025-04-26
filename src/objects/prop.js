@@ -54,4 +54,4 @@ export class Prop extends Highlightable {
         // TODO: Play knock-over sound effect here
         // Example: new Audio('assets/sounds/knock.mp3').play();
     }
-} 
+}

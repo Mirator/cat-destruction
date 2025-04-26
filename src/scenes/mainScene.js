@@ -4,6 +4,7 @@ import { Food } from '../objects/food.js';
 import { FlowerProp } from '../objects/FlowerProp.js';
 import { FLOWER_CONFIG } from '../config/GameConfig.js';
 import { WallTelephone } from '../objects/WallTelephone.js';
+import { Parcel } from '../objects/parcel.js';
 
 export function createScene() {
     // Create scene, camera and renderer
@@ -186,6 +187,39 @@ export function createScene() {
     rightWall.rotation.y = -Math.PI / 2;
     scene.add(rightWall);
 
+    // --- Add a Door to a Random Wall ---
+    // Helper to create a simple door texture
+    function createDoorTexture() {
+        const size = 128;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size * 2;
+        const ctx = canvas.getContext('2d');
+        // Door base
+        ctx.fillStyle = '#bfa16a';
+        ctx.fillRect(0, 0, size, size * 2);
+        // Door panels
+        ctx.strokeStyle = '#8a6a3a';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(10, 10, size - 20, size * 2 - 20);
+        ctx.lineWidth = 3;
+        ctx.strokeRect(25, 25, size - 50, size - 40);
+        ctx.strokeRect(25, size + 15, size - 50, size - 40);
+        // Door knob
+        ctx.beginPath();
+        ctx.arc(size - 25, size, 7, 0, 2 * Math.PI);
+        ctx.fillStyle = '#e2c290';
+        ctx.fill();
+        // Label
+        ctx.font = 'bold 20px sans-serif';
+        ctx.fillStyle = '#6a4a1a';
+        ctx.fillText('DOOR', 30, size + 10);
+        return new THREE.CanvasTexture(canvas);
+    }
+    const doorTexture = createDoorTexture();
+    const doorMaterial = new THREE.MeshStandardMaterial({ map: doorTexture, roughness: 0.5, metalness: 0.1 });
+    const doorWidth = 0.9;
+    const doorHeight = 2.1;
     // Add furniture
     const furniture = createFurniture(roomWidth, roomLength);
     furniture.forEach(item => scene.add(item));
@@ -217,6 +251,7 @@ export function createScene() {
         };
     }
     // Add flower props, adjusting if too close to table
+    const flowerModels = [];
     FLOWER_CONFIG.variants.forEach(variant => {
         let pos = { ...variant.position };
         const flowerSize = { width: 0.18, depth: 0.18 }; // Pot + leaves
@@ -243,7 +278,86 @@ export function createScene() {
             { flowerColor: variant.flowerColor }
         );
         scene.add(flower.model);
+        flowerModels.push({ position: new THREE.Vector3(pos.x, pos.y, pos.z), size: flowerSize });
     });
+
+    // --- Door Placement: Avoid Overlap with Shelf, Flowers, Telephone, and Bowl ---
+    // Get shelf position/size
+    const shelfObj = furniture.find(obj => obj.name === 'shelf');
+    const shelfSize = { width: 1.2, depth: 0.3 };
+    const shelfPos = shelfObj ? shelfObj.position : null;
+    // Telephone info (always on right wall)
+    const telephoneSize = { width: 0.18, depth: 0.08 }; // Approximate
+    const telephonePos = new THREE.Vector3(roomWidth/2 - 0.04, 1.5, roomLength/2 - 1.0);
+    // Bowl info
+    const bowlObj = furniture.find(obj => obj.name === 'bowl');
+    const bowlSize = { width: 0.4, depth: 0.4 };
+    const bowlPos = bowlObj ? bowlObj.position : null;
+    // Helper: check overlap in XZ
+    function isOverlapXZ(posA, sizeA, posB, sizeB, minGap = 0.15) {
+        return (
+            Math.abs(posA.x - posB.x) < (sizeA.width / 2 + sizeB.width / 2 + minGap) &&
+            Math.abs(posA.z - posB.z) < (sizeA.depth / 2 + sizeB.depth / 2 + minGap)
+        );
+    }
+    // Try to place the door up to 20 times
+    let doorPos, doorRotY, wallIdx;
+    let valid = false;
+    for (let attempt = 0; attempt < 20 && !valid; attempt++) {
+        wallIdx = Math.floor(Math.random() * 4);
+        doorPos = new THREE.Vector3();
+        doorRotY = 0;
+        if (wallIdx === 0) { // back wall
+            doorPos.set((Math.random() - 0.5) * (roomWidth - doorWidth - 1.2), doorHeight/2, -roomLength/2 + 0.01);
+            doorRotY = 0;
+        } else if (wallIdx === 1) { // front wall
+            doorPos.set((Math.random() - 0.5) * (roomWidth - doorWidth - 1.2), doorHeight/2, roomLength/2 - 0.01);
+            doorRotY = Math.PI;
+        } else if (wallIdx === 2) { // left wall
+            doorPos.set(-roomWidth/2 + 0.01, doorHeight/2, (Math.random() - 0.5) * (roomLength - doorWidth - 1.2));
+            doorRotY = Math.PI / 2;
+        } else { // right wall
+            doorPos.set(roomWidth/2 - 0.01, doorHeight/2, (Math.random() - 0.5) * (roomLength - doorWidth - 1.2));
+            doorRotY = -Math.PI / 2;
+        }
+        // Check overlap with shelf
+        let overlap = false;
+        if (shelfPos && isOverlapXZ(doorPos, { width: doorWidth, depth: 0.2 }, shelfPos, shelfSize)) {
+            overlap = true;
+        }
+        // Check overlap with flowers
+        for (const flower of flowerModels) {
+            if (isOverlapXZ(doorPos, { width: doorWidth, depth: 0.2 }, flower.position, flower.size)) {
+                overlap = true;
+                break;
+            }
+        }
+        // Check overlap with telephone (only if right wall)
+        if (wallIdx === 3) {
+            if (isOverlapXZ(doorPos, { width: doorWidth, depth: 0.2 }, telephonePos, telephoneSize, 0.15)) {
+                overlap = true;
+            }
+        }
+        // Check overlap with bowl
+        if (bowlPos && isOverlapXZ(doorPos, { width: doorWidth, depth: 0.2 }, bowlPos, bowlSize)) {
+            overlap = true;
+        }
+        if (!overlap) valid = true;
+    }
+    // Remove previous door if present (for hot reload/dev)
+    const prevDoor = scene.getObjectByName('restock_door');
+    if (prevDoor) scene.remove(prevDoor);
+    // Create door mesh
+    const doorGeometry = new THREE.PlaneGeometry(doorWidth, doorHeight);
+    const doorMesh = new THREE.Mesh(doorGeometry, doorMaterial);
+    doorMesh.position.copy(doorPos);
+    doorMesh.rotation.y = doorRotY;
+    doorMesh.name = 'restock_door';
+    doorMesh.castShadow = false;
+    doorMesh.receiveShadow = true;
+    scene.add(doorMesh);
+    // Store door info for parcel spawning
+    scene.userData.restockDoor = { position: doorPos.clone(), rotationY: doorRotY };
 
     // Set initial camera position
     camera.position.set(0, 1.7, 0); // Eye height
@@ -255,6 +369,42 @@ export function createScene() {
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
+
+    // --- Parcel Spawning Helper ---
+    scene.userData.spawnParcelAtDoor = function() {
+        // Remove existing parcel if present
+        const existing = scene.getObjectByName('restock_parcel');
+        if (existing) scene.remove(existing);
+        const { position, rotationY } = scene.userData.restockDoor;
+        // Try both offset directions
+        const offset = 0.5;
+        const dir = new THREE.Vector3(Math.sin(rotationY), 0, Math.cos(rotationY));
+        let parcelPos1 = position.clone().add(dir.clone().multiplyScalar(-offset));
+        let parcelPos2 = position.clone().add(dir.clone().multiplyScalar(offset));
+        // Room bounds
+        const roomWidth = 6, roomLength = 8;
+        function inRoomBounds(pos) {
+            return (
+                pos.x > -roomWidth/2 && pos.x < roomWidth/2 &&
+                pos.z > -roomLength/2 && pos.z < roomLength/2
+            );
+        }
+        let chosenPos = null;
+        if (inRoomBounds(parcelPos1)) {
+            chosenPos = parcelPos1;
+        } else if (inRoomBounds(parcelPos2)) {
+            chosenPos = parcelPos2;
+        } else {
+            chosenPos = position.clone(); // fallback: at the door
+        }
+        // Create parcel using the Parcel class
+        const parcel = new Parcel(chosenPos);
+        scene.add(parcel.model);
+        if (scene.userData.interactionManager) {
+            scene.userData.interactionManager.collectObjects();
+        }
+        return parcel;
+    };
 
     return { scene, camera, renderer };
 }

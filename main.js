@@ -52,6 +52,7 @@ const playerController = new PlayerController(camera, renderer.domElement);
 
 // Initialize interaction manager
 const interactionManager = new InteractionManager(scene, playerController);
+scene.userData.interactionManager = interactionManager;
 
 // Initialize cat
 const cat = new Cat(scene, new THREE.Vector3(0, 0, -2), playerState); // Pass playerState

@@ -13,6 +13,7 @@ export class DialingUI {
         this.onComplete = null;
         this.onCancel = null;
         this.active = false;
+        this.keyButtons = {}; // Store button references by number
     }
 
     createElements() {
@@ -82,6 +83,7 @@ export class DialingUI {
         btn.style.cursor = 'pointer';
         btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
         btn.onclick = () => this.handleInput(num);
+        this.keyButtons[num] = btn; // Store reference
         return btn;
     }
 
@@ -123,6 +125,7 @@ export class DialingUI {
 
     handleInput(num) {
         if (!this.active) return;
+        this.highlightButton(num);
         if (this.input.length < this.code.length) {
             this.input.push(num);
             this.updateDisplay();
@@ -142,6 +145,16 @@ export class DialingUI {
                 }
             }
         }
+    }
+
+    highlightButton(num) {
+        const btn = this.keyButtons[num];
+        if (!btn) return;
+        const originalBg = btn.style.background;
+        btn.style.background = '#ffe066'; // Highlight color
+        setTimeout(() => {
+            btn.style.background = originalBg;
+        }, 150);
     }
 
     keyListener = (e) => {

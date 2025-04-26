@@ -4,6 +4,7 @@ export class InteractionUI {
     constructor() {
         this.createPromptElement();
         this.createDistanceDisplay();
+        this.createHelpTipElement();
     }
 
     createPromptElement() {
@@ -44,6 +45,26 @@ export class InteractionUI {
         this.distanceElement.style.zIndex = '1000';
         this.distanceElement.style.transition = 'opacity 0.5s, box-shadow 0.5s';
         document.body.appendChild(this.distanceElement);
+    }
+
+    createHelpTipElement() {
+        this.helpTipElement = document.createElement('div');
+        this.helpTipElement.style.position = 'fixed';
+        this.helpTipElement.style.top = '7%';
+        this.helpTipElement.style.left = '50%';
+        this.helpTipElement.style.transform = 'translateX(-50%)';
+        this.helpTipElement.style.backgroundColor = 'rgba(255, 255, 210, 0.98)';
+        this.helpTipElement.style.color = '#2d2d1a';
+        this.helpTipElement.style.padding = '14px 32px';
+        this.helpTipElement.style.borderRadius = '16px';
+        this.helpTipElement.style.boxShadow = '0 2px 18px rgba(120,80,40,0.13)';
+        this.helpTipElement.style.fontFamily = '"Quicksand", "Segoe UI", Arial, sans-serif';
+        this.helpTipElement.style.fontSize = '22px';
+        this.helpTipElement.style.textAlign = 'center';
+        this.helpTipElement.style.zIndex = '100001';
+        this.helpTipElement.style.display = 'none';
+        this.helpTipElement.style.transition = 'opacity 0.5s, box-shadow 0.5s';
+        document.body.appendChild(this.helpTipElement);
     }
 
     showPrompt(text) {
@@ -104,5 +125,14 @@ export class InteractionUI {
         } else {
             this.hidePrompt();
         }
+    }
+
+    showHelpTip(text) {
+        this.helpTipElement.textContent = text;
+        this.helpTipElement.style.display = 'block';
+    }
+
+    hideHelpTip() {
+        this.helpTipElement.style.display = 'none';
     }
 } 
