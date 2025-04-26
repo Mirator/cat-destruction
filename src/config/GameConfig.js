@@ -199,6 +199,7 @@ export const ACTIVITY_TYPES = {
     WALKING: 'walking',
     EATING: 'eating',
     SEARCHING_FOOD: 'searchingFood',
+    GOING_TO_BOWL: 'goingToBowl',
     MEOWING: 'meowing',
     ROTATING: 'rotating',
     HEARD_FOOD: 'heardFood'
@@ -210,6 +211,7 @@ export const ACTIVITY_DESCRIPTIONS = {
     [ACTIVITY_TYPES.WALKING]: 'Exploring',
     [ACTIVITY_TYPES.EATING]: 'Eating',
     [ACTIVITY_TYPES.SEARCHING_FOOD]: 'Looking for Food',
+    [ACTIVITY_TYPES.GOING_TO_BOWL]: 'Going to the Bowl',
     [ACTIVITY_TYPES.MEOWING]: 'Meowing',
     [ACTIVITY_TYPES.ROTATING]: 'Looking Around',
     [ACTIVITY_TYPES.HEARD_FOOD]: 'Noticed Food!'

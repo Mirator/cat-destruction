@@ -4,6 +4,7 @@ export class CatBehavior {
     constructor(cat) {
         this.cat = cat;
         this.state = cat.state;
+        this._lastMoveLogTime = 0;
     }
 
     update(deltaTime) {
@@ -22,6 +23,9 @@ export class CatBehavior {
     handleMovement(deltaTime) {
         const movement = this.state.movement;
         const foodState = this.state.food;
+        // Throttle moving towards target log
+        if (!this._lastMoveLogTime) this._lastMoveLogTime = 0;
+        const now = Date.now();
         // Randomly pick a new target if idle
         if (!movement.targetPosition && !foodState.isEating && Math.random() < 0.01) {
             this.state.updateMovement({
@@ -31,6 +35,10 @@ export class CatBehavior {
         }
         // Move towards target
         if (movement.targetPosition && !foodState.isEating) {
+            // Set activity to GOING_TO_BOWL if going to a known bowl with food
+            if (foodState.targetBowl && foodState.targetBowl.hasFood()) {
+                this.state.setActivity(ACTIVITY_TYPES.GOING_TO_BOWL);
+            }
             const reached = this.cat.moveTowards(movement.targetPosition, Math.min(deltaTime, 0.1));
             if (reached) {
                 this.state.updateMovement({ targetPosition: null });

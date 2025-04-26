@@ -228,7 +228,7 @@ export class InteractionManager {
         }
 
         // If not placed in bowl, drop on ground
-        const dropPosition = this.findDropPosition();
+        const dropPosition = this.calculateDropPosition();
         this.carriedFood.drop(dropPosition);
         this.carriedFood = null;
     }

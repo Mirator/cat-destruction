@@ -235,11 +235,9 @@ export class Cat {
                     const bowl = object.userData.bowlInstance;
                     if (bowl) {
                         const distance = this.position.distanceTo(bowl.position);
-                        if (distance < CAT_CONFIG.movement.bowlDetectionRadius && distance < nearestDistance) {
-                            if (this.state.hunger >= CAT_CONFIG.hunger.thresholds.veryHungry || bowl.hasFood()) {
-                                nearestBowl = bowl;
-                                nearestDistance = distance;
-                            }
+                        if ((this.state.hunger >= CAT_CONFIG.hunger.thresholds.veryHungry || bowl.hasFood()) && distance < nearestDistance) {
+                            nearestBowl = bowl;
+                            nearestDistance = distance;
                         }
                     }
                 }
@@ -304,7 +302,6 @@ export class Cat {
             
             this.raycaster.set(position, rayDirection);
             const intersects = this.raycaster.intersectObjects(collidableObjects, true);
-            
             if (intersects.length > 0 && intersects[0].distance < CAT_CONFIG.movement.collisionRadius) {
                 collision = true;
                 collisionNormal.add(intersects[0].face.normal);
@@ -325,9 +322,9 @@ export class Cat {
         const distance = toTarget.length();
         
         if (distance < 0.1) {
-            this.state.currentSpeed = Math.max(0, this.state.currentSpeed - CAT_CONFIG.movement.deceleration * deltaTime);
-            if (this.state.currentSpeed < CAT_CONFIG.movement.minSpeedThreshold) {
-                this.state.currentSpeed = 0;
+            this.state.movement.currentSpeed = Math.max(0, this.state.movement.currentSpeed - CAT_CONFIG.movement.deceleration * deltaTime);
+            if (this.state.movement.currentSpeed < CAT_CONFIG.movement.minSpeedThreshold) {
+                this.state.movement.currentSpeed = 0;
                 return true;
             }
         }
@@ -339,42 +336,42 @@ export class Cat {
     }
 
     updateRotation(toTarget, deltaTime) {
-        this.state.targetAngle = Math.atan2(toTarget.x, toTarget.z);
-        let angleDiff = this.state.targetAngle - this.state.facingAngle;
+        this.state.movement.targetAngle = Math.atan2(toTarget.x, toTarget.z);
+        let angleDiff = this.state.movement.targetAngle - this.state.movement.facingAngle;
         
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
         
-        this.state.isRotating = Math.abs(angleDiff) > CAT_CONFIG.movement.turnThreshold;
+        this.state.movement.isRotating = Math.abs(angleDiff) > CAT_CONFIG.movement.turnThreshold;
         
-        if (this.state.isRotating) {
+        if (this.state.movement.isRotating) {
             const rotationStep = Math.sign(angleDiff) * 
                 Math.min(Math.abs(angleDiff), CAT_CONFIG.movement.rotationSpeed * deltaTime);
-            this.state.facingAngle += rotationStep;
+            this.state.movement.facingAngle += rotationStep;
             
-            while (this.state.facingAngle > Math.PI) this.state.facingAngle -= Math.PI * 2;
-            while (this.state.facingAngle < -Math.PI) this.state.facingAngle += Math.PI * 2;
+            while (this.state.movement.facingAngle > Math.PI) this.state.movement.facingAngle -= Math.PI * 2;
+            while (this.state.movement.facingAngle < -Math.PI) this.state.movement.facingAngle += Math.PI * 2;
             
-            this.model.rotation.y = this.state.facingAngle;
-            this.state.currentSpeed = Math.max(0, this.state.currentSpeed - CAT_CONFIG.movement.deceleration * deltaTime);
+            this.model.rotation.y = this.state.movement.facingAngle;
+            this.state.movement.currentSpeed = Math.max(0, this.state.movement.currentSpeed - CAT_CONFIG.movement.deceleration * deltaTime);
         } else {
-            this.state.currentSpeed = Math.min(
+            this.state.movement.currentSpeed = Math.min(
                 CAT_CONFIG.movement.maxSpeed,
-                this.state.currentSpeed + CAT_CONFIG.movement.acceleration * deltaTime
+                this.state.movement.currentSpeed + CAT_CONFIG.movement.acceleration * deltaTime
             );
         }
 
-        const tiltAmount = this.state.isRotating ? (angleDiff / Math.PI) * 0.1 : 0;
+        const tiltAmount = this.state.movement.isRotating ? (angleDiff / Math.PI) * 0.1 : 0;
         this.head.rotation.z = -tiltAmount;
     }
 
     updateMovement(deltaTime) {
-        if (this.state.currentSpeed > 0) {
+        if (this.state.movement.currentSpeed > 0) {
             const movement = new THREE.Vector3(
-                Math.sin(this.state.facingAngle),
+                Math.sin(this.state.movement.facingAngle),
                 0,
-                Math.cos(this.state.facingAngle)
-            ).multiplyScalar(this.state.currentSpeed * deltaTime);
+                Math.cos(this.state.movement.facingAngle)
+            ).multiplyScalar(this.state.movement.currentSpeed * deltaTime);
             
             const nextPosition = this.position.clone().add(movement);
             const collisionCheck = this.checkCollision(nextPosition, movement.normalize());
@@ -401,7 +398,7 @@ export class Cat {
             this.position.copy(slidePosition);
         }
         
-        if (this.state.currentSpeed < 0.1) {
+        if (this.state.movement.currentSpeed < 0.1) {
             this.state.targetPosition = this.findNewTarget();
         }
     }
@@ -431,33 +428,24 @@ export class Cat {
     }
 
     notifyFoodAdded(bowl) {
-        const distance = this.position.distanceTo(bowl.position);
-        
-        console.log('Food added notification:', {
-            distance,
-            hearingRange: CAT_CONFIG.hearing.range,
-            hunger: this.state.hunger,
-            interestThreshold: CAT_CONFIG.hunger.thresholds.interested
+        if (this.state.hunger >= CAT_CONFIG.hunger.thresholds.interested && !this.state.food.isEating) {
+            console.log('[Cat] Heard food added to bowl at', bowl.position, 'Current hunger:', this.state.hunger);
+        }
+        this.state.updateFood({
+            heardFood: true,
+            heardFoodBowl: bowl,
+            lastFoodSound: Date.now()
         });
-        
-        if (distance <= CAT_CONFIG.hearing.range) {
+        this.state.setActivity(ACTIVITY_TYPES.HEARD_FOOD);
+        if (this.state.hunger >= CAT_CONFIG.hunger.thresholds.interested && !this.state.food.isEating) {
             this.state.updateFood({
-                heardFood: true,
-                heardFoodBowl: bowl,
-                lastFoodSound: Date.now()
+                targetBowl: bowl
             });
-            this.state.setActivity(ACTIVITY_TYPES.HEARD_FOOD);
-            
-            if (this.state.hunger >= CAT_CONFIG.hunger.thresholds.interested && !this.state.food.isEating) {
-                console.log('Cat is interested in new food');
-                this.state.updateFood({
-                    targetBowl: bowl
-                });
-                this.state.updateMovement({
-                    targetPosition: bowl.position.clone()
-                });
-                this.showMeow();
-            }
+            this.state.updateMovement({
+                targetPosition: bowl.position.clone()
+            });
+            this.state.setActivity(ACTIVITY_TYPES.GOING_TO_BOWL);
+            this.showMeow();
         }
     }
 
@@ -480,13 +468,7 @@ export class Cat {
                 const bowl = object.userData.bowlInstance;
                 if (bowl && bowl.hasFood()) {
                     const distance = this.position.distanceTo(bowl.position);
-                    console.log('Found bowl with food:', {
-                        distance,
-                        detectionRadius: CAT_CONFIG.movement.bowlDetectionRadius,
-                        bowlPosition: bowl.position,
-                        catPosition: this.position
-                    });
-                    if (distance < CAT_CONFIG.movement.bowlDetectionRadius && distance < minDistance) {
+                    if (distance < minDistance) {
                         minDistance = distance;
                         nearestBowl = bowl;
                     }
@@ -494,28 +476,18 @@ export class Cat {
             }
         });
 
-        if (nearestBowl) {
-            console.log('Found nearest bowl:', nearestBowl);
-        }
         return nearestBowl;
     }
 
     moveTowardsBowl(bowl) {
         if (!bowl) return;
-        
-        console.log('Moving towards bowl:', {
-            bowlPosition: bowl.position,
-            catPosition: this.position
-        });
-        
-        // Update state through state manager
         this.state.updateFood({
             targetBowl: bowl
         });
         this.state.updateMovement({
             targetPosition: bowl.position.clone()
         });
-        this.state.setActivity(ACTIVITY_TYPES.SEARCHING_FOOD);
+        this.state.setActivity(ACTIVITY_TYPES.GOING_TO_BOWL);
         
         // Calculate direction to bowl
         const direction = bowl.position.clone().sub(this.position);
@@ -571,19 +543,20 @@ export class Cat {
     }
 
     eat(bowl) {
-        if (!this.state.food.isEating) {
+        if (!this.state.food.isEating && bowl.hasFood()) {
             this.state.food.isEating = true;
-            // Start eating animation or visual feedback
-            
-            // Increase hunger while eating
-            const eatInterval = setInterval(() => {
-                this.state.hunger = Math.min(100, this.state.hunger + 5);
-                if (this.state.hunger >= 100 || !bowl.hasFood()) {
-                    clearInterval(eatInterval);
-                    this.state.food.isEating = false;
-                    this.state.food.targetBowl = null;
-                }
-            }, 500); // Eat every 0.5 seconds
+            this.state.setActivity(ACTIVITY_TYPES.EATING);
+            const food = bowl.currentFood;
+            const nutrition = food.consume();
+            this.state.setHunger(Math.max(0, this.state.hunger - nutrition));
+            this.state.setAnger(Math.max(0, this.state.anger - nutrition / 2));
+            if (food.isConsumed) {
+                bowl.currentFood = null;
+            }
+            setTimeout(() => {
+                this.state.food.isEating = false;
+                this.state.food.targetBowl = null;
+            }, 1000); // Eating duration
         }
     }
 
