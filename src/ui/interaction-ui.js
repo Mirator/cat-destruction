@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 
+console.log('[DEBUG][UI] interaction-ui.js loaded');
+
 export class InteractionUI {
     constructor() {
+        console.log('[DEBUG][UI] InteractionUI constructed');
         this.createPromptElement();
         this.createDistanceDisplay();
     }
@@ -13,15 +16,17 @@ export class InteractionUI {
         this.promptElement.style.bottom = '20%';
         this.promptElement.style.left = '50%';
         this.promptElement.style.transform = 'translateX(-50%)';
-        this.promptElement.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        this.promptElement.style.color = 'white';
+        this.promptElement.style.backgroundColor = 'rgba(255, 236, 210, 0.95)';
+        this.promptElement.style.color = '#6d4c2c';
         this.promptElement.style.padding = '10px 20px';
-        this.promptElement.style.borderRadius = '5px';
-        this.promptElement.style.fontFamily = 'Arial, sans-serif';
+        this.promptElement.style.borderRadius = '12px';
+        this.promptElement.style.boxShadow = '0 2px 12px rgba(120,80,40,0.10)';
+        this.promptElement.style.fontFamily = '"Quicksand", "Segoe UI", Arial, sans-serif';
         this.promptElement.style.fontSize = '18px';
         this.promptElement.style.textAlign = 'center';
-        this.promptElement.style.zIndex = '1000';
+        this.promptElement.style.zIndex = '99999';
         this.promptElement.style.display = 'none';
+        this.promptElement.style.transition = 'opacity 0.5s, box-shadow 0.5s';
         
         // Add to document
         document.body.appendChild(this.promptElement);
@@ -32,22 +37,26 @@ export class InteractionUI {
         this.distanceElement.style.position = 'fixed';
         this.distanceElement.style.bottom = '20px';
         this.distanceElement.style.left = '20px';
-        this.distanceElement.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        this.distanceElement.style.color = 'white';
+        this.distanceElement.style.backgroundColor = 'rgba(255, 236, 210, 0.95)';
+        this.distanceElement.style.color = '#6d4c2c';
         this.distanceElement.style.padding = '5px 10px';
-        this.distanceElement.style.borderRadius = '5px';
-        this.distanceElement.style.fontFamily = 'monospace';
+        this.distanceElement.style.borderRadius = '12px';
+        this.distanceElement.style.boxShadow = '0 2px 12px rgba(120,80,40,0.10)';
+        this.distanceElement.style.fontFamily = 'monospace, "Quicksand", "Segoe UI", Arial, sans-serif';
         this.distanceElement.style.fontSize = '14px';
         this.distanceElement.style.zIndex = '1000';
+        this.distanceElement.style.transition = 'opacity 0.5s, box-shadow 0.5s';
         document.body.appendChild(this.distanceElement);
     }
 
     showPrompt(text) {
+        console.log('[DEBUG][UI] showPrompt:', text);
         this.promptElement.textContent = text;
         this.promptElement.style.display = 'block';
     }
 
     hidePrompt() {
+        console.log('[DEBUG][UI] hidePrompt');
         this.promptElement.style.display = 'none';
     }
 
@@ -84,7 +93,8 @@ export class InteractionUI {
         }
     }
 
-    updateInteractionPrompt(nearestFood, nearestBowl, isCarryingFood) {
+    updateInteractionPrompt(nearestFood, nearestBowl, isCarryingFood, nearestProp) {
+        console.log('[DEBUG][UI] nearestFood:', nearestFood, 'nearestProp:', nearestProp, 'isKnockedOver:', nearestProp && nearestProp.isKnockedOver);
         if (isCarryingFood) {
             if (nearestBowl) {
                 this.showPrompt('Press [E] to fill the bowl');
@@ -93,6 +103,8 @@ export class InteractionUI {
             }
         } else if (nearestFood) {
             this.showPrompt(`Press [E] to pick up ${nearestFood.getName()}`);
+        } else if (nearestProp && nearestProp.isKnockedOver) {
+            this.showPrompt('Press [E] to fix');
         } else {
             this.hidePrompt();
         }

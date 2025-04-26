@@ -7,6 +7,7 @@ import { INTERACTION_CONFIG } from './src/objects/food.js';
 import { PlayerState } from './src/state/PlayerState.js';
 import { PlayerStatusBar } from './src/ui/playerStatusBar.js';
 import { GameOverScreen } from './src/ui/GameOverScreen.js';
+import { StartScreen } from './src/ui/StartScreen.js';
 
 // Initialize the scene
 const { scene, camera, renderer } = createScene();
@@ -18,6 +19,7 @@ const playerState = new PlayerState(100);
 const playerStatusBar = new PlayerStatusBar(playerState);
 
 let gameOver = false;
+let gameStarted = false;
 
 function restartGame() {
     // Reset player state and cat position (simple reset)
@@ -59,9 +61,17 @@ const cat = new Cat(scene, new THREE.Vector3(0, 0, -2), playerState); // Pass pl
 // Time tracking for smooth movement
 let lastTime = performance.now();
 
+const startScreen = new StartScreen(() => {
+    gameStarted = true;
+    lastTime = performance.now();
+    animate();
+});
+
+startScreen.show();
+
 // Animation loop
 function animate() {
-    if (gameOver) return;
+    if (!gameStarted || gameOver) return;
     requestAnimationFrame(animate);
     
     // Calculate delta time for smooth movement

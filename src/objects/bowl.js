@@ -1,17 +1,21 @@
 import * as THREE from 'three';
 import { FOOD_TYPES } from './food.js';
 import { BOWL_CONFIG } from '../config/GameConfig.js';
+import { Highlightable } from './Highlightable.js';
 
-export class Bowl {
+export class Bowl extends Highlightable {
     constructor(position) {
+        const model = new THREE.Group();
+        model.name = 'food_bowl';
+        super(model);
         this.position = position;
         this.currentFood = null;
-        this.isHighlighted = false;
         this.cats = new Set(); // Store references to cats in the scene
         this.createMaterials();
-        this.createModel();
+        this.model = model;
         this.fill = 0; // 0 = empty, 1 = full
         this.targetFill = 0; // For smooth animation
+        this.createModel();
     }
 
     createMaterials() {
@@ -32,9 +36,6 @@ export class Bowl {
     }
 
     createModel() {
-        this.model = new THREE.Group();
-        this.model.name = 'food_bowl';
-        
         // Create bottom part of the bowl
         const bottom = this.createBottomPart();
         
@@ -122,25 +123,6 @@ export class Bowl {
         });
     }
 
-    setHighlight(enabled) {
-        if (this.isHighlighted === enabled) return;
-        this.isHighlighted = enabled;
-        
-        const material = enabled ? this.materials.highlight : this.materials.normal;
-        this.model.traverse((object) => {
-            if (object.isMesh && object !== this.foodContent) {
-                object.material = material;
-            }
-        });
-    }
-
-    updateHighlight(deltaTime) {
-        if (this.isHighlighted) {
-            const pulse = (Math.sin(Date.now() * 0.003 * BOWL_CONFIG.highlight.pulseSpeed) + 1) / 2;
-            this.materials.highlight.opacity = 0.3 + pulse * 0.2;
-        }
-    }
-
     addFood(food) {
         if (this.currentFood || !food) return false;
         food.model.visible = false;
@@ -151,7 +133,6 @@ export class Bowl {
             visible: true
         });
         this.currentFood = food;
-        this.setHighlight(false);
         this.targetFill = 1; // Set target fill, not fill directly
         // Notify all cats in the scene about the food
         this.cats.forEach(cat => cat.notifyFoodAdded(this));

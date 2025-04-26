@@ -126,6 +126,21 @@ export class CatStatusBar {
         // Set initial state
         this.updateAnger(0);
         this.updateActivity(ACTIVITY_TYPES.IDLE);
+
+        this.barElement = document.createElement('div');
+        Object.assign(this.barElement.style, {
+            background: 'rgba(255, 236, 210, 0.92)',
+            borderRadius: '16px',
+            boxShadow: '0 2px 12px rgba(120,80,40,0.10)',
+            fontFamily: '"Quicksand", "Segoe UI", Arial, sans-serif',
+            color: '#6d4c2c',
+            fontSize: '1.1rem',
+            padding: '10px 24px',
+            margin: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            transition: 'opacity 0.5s, box-shadow 0.5s',
+        });
     }
 
     createElement(type, styles) {

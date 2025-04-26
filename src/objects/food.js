@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Highlightable } from './Highlightable.js';
 
 export const FOOD_TYPES = {
     BASIC: {
@@ -37,81 +38,32 @@ export const INTERACTION_CONFIG = {
     pulseSpeed: 2.0      // Speed of highlight pulse
 };
 
-export class Food {
+export class Food extends Highlightable {
     constructor(type, position) {
-        this.type = type;
-        this.position = position.clone();
-        this.isConsumed = false;
-        this.isPickedUp = false;
-        
-        this.createModel();
-        this.createHighlight();
-        this.isHighlighted = false;
-    }
-
-    createModel() {
-        const config = FOOD_TYPES[this.type];
+        const config = FOOD_TYPES[type];
         const geometry = new THREE.BoxGeometry(
             config.model.width,
             config.model.height,
             config.model.depth
         );
-        
-        this.originalMaterial = new THREE.MeshStandardMaterial({
+        const material = new THREE.MeshStandardMaterial({
             color: config.color.package,
             flatShading: true
         });
-
-        this.model = new THREE.Mesh(geometry, this.originalMaterial);
-        this.model.position.copy(this.position);
-        this.model.name = `food_${this.type.toLowerCase()}`;
-        
+        const model = new THREE.Mesh(geometry, material);
+        model.position.copy(position);
+        model.name = `food_${type.toLowerCase()}`;
+        model.castShadow = true;
+        model.receiveShadow = true;
+        model.userData.foodInstance = null; // Set after super
+        super(model);
+        this.type = type;
+        this.position = position.clone();
+        this.isConsumed = false;
+        this.isPickedUp = false;
+        this.model.userData.foodInstance = this;
         // Add a small random rotation for variety
         this.model.rotation.y = Math.random() * Math.PI;
-        
-        // Setup shadows
-        this.model.castShadow = true;
-        this.model.receiveShadow = true;
-        
-        // Store reference to this instance
-        this.model.userData.foodInstance = this;
-    }
-
-    createHighlight() {
-        // Create highlight material with stronger emissive effect
-        this.highlightMaterial = new THREE.MeshStandardMaterial({
-            color: INTERACTION_CONFIG.highlightColor,
-            emissive: INTERACTION_CONFIG.highlightColor,
-            emissiveIntensity: 1.0,
-            transparent: true,
-            opacity: 0.8
-        });
-        this.isHighlighted = false;
-        this.pulseTime = 0;
-    }
-
-    setHighlight(enabled) {
-        if (this.isHighlighted === enabled) return;
-        
-        this.isHighlighted = enabled;
-        this.pulseTime = 0;
-        
-        if (!this.model || !this.originalMaterial || !this.highlightMaterial) {
-            console.warn('Materials not properly initialized');
-            return;
-        }
-
-        this.model.material = enabled ? this.highlightMaterial : this.originalMaterial;
-    }
-
-    updateHighlight(deltaTime = 1/60) {
-        if (!this.isHighlighted || !this.highlightMaterial) return;
-
-        this.pulseTime += deltaTime * INTERACTION_CONFIG.pulseSpeed;
-        const pulse = (Math.sin(this.pulseTime * Math.PI * 2) + 1) / 2;
-        
-        this.highlightMaterial.opacity = 0.6 + pulse * 0.4;
-        this.highlightMaterial.emissiveIntensity = 0.8 + pulse * 0.4;
     }
 
     consume() {
@@ -129,7 +81,6 @@ export class Food {
     pickup() {
         if (this.isConsumed || this.isPickedUp) return false;
         this.isPickedUp = true;
-        this.setHighlight(false);
         return true;
     }
 
