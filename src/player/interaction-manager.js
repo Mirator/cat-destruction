@@ -211,7 +211,7 @@ export class InteractionManager {
                 }
                 hit = hit.parent;
             }
-            if (prop) {
+            if (prop && prop.isKnockedOver) {
                 const dist = this.player.camera.position.distanceTo(prop.model.position);
                 console.log('[DEBUG] Prop hit:', prop, 'isKnockedOver:', prop.isKnockedOver, 'distance:', dist);
                 if (dist < minPropDist) {
@@ -222,7 +222,7 @@ export class InteractionManager {
         } else {
             console.log('[DEBUG] No prop intersected by raycast');
         }
-        // Highlight only the nearest prop (knocked-over or not)
+        // Highlight only the nearest knocked-over prop
         this.flowerProps.forEach(prop => {
             if (prop === nearestProp) {
                 console.log('[DEBUG] Highlighting prop:', prop);
@@ -265,12 +265,11 @@ export class InteractionManager {
         if (event.key.toLowerCase() === 'e' && this.player?.camera) {
             if (this.carriedFood) {
                 this.handleDrop();
+            } else if (this.tryResetNearestFlower()) {
+                // Flower was reset, do nothing else
             } else {
                 this.handlePickup();
             }
-        }
-        if (event.key.toLowerCase() === 'r' && this.player?.camera) {
-            this.resetNearestFlower();
         }
     }
 
@@ -301,11 +300,11 @@ export class InteractionManager {
         }
     }
 
-    resetNearestFlower() {
-        if (!this.flowerProps.length) return;
+    tryResetNearestFlower() {
+        if (!this.flowerProps.length) return false;
         const camPos = this.player.camera.position;
         let nearest = null;
-        let minDist = 2.0; // max reset distance
+        let minDist = 2.2; // match highlight distance
         this.flowerProps.forEach(flower => {
             if (flower.isKnockedOver) {
                 const dist = flower.model.position.distanceTo(camPos);
@@ -317,6 +316,8 @@ export class InteractionManager {
         });
         if (nearest) {
             nearest.reset();
+            return true;
         }
+        return false;
     }
 } 
