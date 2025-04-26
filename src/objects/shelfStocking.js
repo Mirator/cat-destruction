@@ -82,7 +82,7 @@ export function stockShelf(shelfGroup, shelfPositions, shelfWidth) {
         const z = basePos.z - zRange + Math.random() * (2 * zRange);
         const pos = { x, y: basePos.y, z };
         // Debug: log can position
-        console.log(`[ShelfStocking] Placing can: shelfIdx=${comp.shelfIdx}, left=${comp.left}, pos=`, pos);
+        // console.log(`[ShelfStocking] Placing can: shelfIdx=${comp.shelfIdx}, left=${comp.left}, pos=`, pos);
         const type = Math.random() < 0.7 ? 'BASIC' : 'PREMIUM';
         const food = new Food(type, new THREE.Vector3(pos.x, pos.y, pos.z));
         food.model.rotation.set(0, 0, 0);
