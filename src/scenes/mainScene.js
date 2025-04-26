@@ -187,6 +187,66 @@ export function createScene() {
     rightWall.rotation.y = -Math.PI / 2;
     scene.add(rightWall);
 
+    // --- Cozy Ceiling ---
+    // Create a subtle ceiling texture (off-white with a hint of warmth)
+    function createCeilingTexture() {
+        const size = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        // Base color: warm off-white
+        ctx.fillStyle = '#f7f3e8';
+        ctx.fillRect(0, 0, size, size);
+        // Add some subtle noise for coziness
+        for (let i = 0; i < 800; i++) {
+            ctx.fillStyle = 'rgba(220, 210, 180, 0.07)';
+            ctx.beginPath();
+            ctx.arc(Math.random() * size, Math.random() * size, Math.random() * 2, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(2, 2);
+        return texture;
+    }
+    const ceilingTexture = createCeilingTexture();
+    ceilingTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    const ceilingMaterial = new THREE.MeshStandardMaterial({
+        map: ceilingTexture,
+        color: 0xf7f3e8,
+        roughness: 0.8,
+        metalness: 0.05
+    });
+    const ceilingGeometry = new THREE.PlaneGeometry(roomWidth, roomLength);
+    const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
+    ceiling.position.y = roomHeight;
+    ceiling.rotation.x = Math.PI / 2;
+    ceiling.receiveShadow = true;
+    ceiling.name = 'ceiling';
+    scene.add(ceiling);
+
+    // --- Ceiling Lighting ---
+    // Add a cozy ceiling lamp (PointLight with soft shadows)
+    const ceilingLight = new THREE.PointLight(0xfff8e1, 1.1, 10, 2);
+    ceilingLight.position.set(0, roomHeight - 0.05, 0); // Slightly below the ceiling center
+    ceilingLight.castShadow = true;
+    ceilingLight.shadow.mapSize.width = 1024;
+    ceilingLight.shadow.mapSize.height = 1024;
+    ceilingLight.shadow.radius = 8;
+    ceilingLight.shadow.bias = -0.002;
+    scene.add(ceilingLight);
+    // Optionally, add a visible lamp mesh (simple disc)
+    const lampGeometry = new THREE.CircleGeometry(0.22, 24);
+    const lampMaterial = new THREE.MeshStandardMaterial({ color: 0xfff8e1, emissive: 0xffe4b5, emissiveIntensity: 0.7, roughness: 0.5 });
+    const lampMesh = new THREE.Mesh(lampGeometry, lampMaterial);
+    lampMesh.position.set(0, roomHeight - 0.01, 0);
+    lampMesh.rotation.x = -Math.PI / 2;
+    lampMesh.receiveShadow = false;
+    lampMesh.castShadow = false;
+    lampMesh.name = 'ceiling_lamp';
+    scene.add(lampMesh);
+
     // --- Add a Door to a Random Wall ---
     // Helper to create a simple door texture
     function createDoorTexture() {
