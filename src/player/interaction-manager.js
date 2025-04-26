@@ -162,6 +162,9 @@ export class InteractionManager {
     update(deltaTime) {
         if (!this.player?.camera) return;
 
+        // Update all bowls (for smooth fill animation)
+        this.bowls.forEach(bowl => bowl.update(deltaTime));
+
         if (this.carriedFood) {
             this.carriedFood.updateCarriedPosition(
                 this.player.camera.position,

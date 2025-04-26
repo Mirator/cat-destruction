@@ -236,8 +236,17 @@ function getRandomPosition(roomWidth, roomLength, objectWidth, objectLength) {
     return { x, z };
 }
 
+// Helper function to check AABB overlap in XZ plane
+function isOverlapping(posA, sizeA, posB, sizeB) {
+    return (
+        Math.abs(posA.x - posB.x) < (sizeA.width / 2 + sizeB.width / 2) &&
+        Math.abs(posA.z - posB.z) < (sizeA.depth / 2 + sizeB.depth / 2)
+    );
+}
+
 export function createFurniture(roomWidth, roomLength) {
     const furniture = [];
+    const placedObjects = [];
     
     // Create and position table
     const table = createTable();
@@ -247,6 +256,10 @@ export function createFurniture(roomWidth, roomLength) {
     const tableRotation = Math.floor(Math.random() * 4) * (Math.PI / 2);
     table.rotation.y = tableRotation;
     furniture.push(table);
+    placedObjects.push({
+        pos: { x: tablePos.x, z: tablePos.z },
+        size: { width: FURNITURE_DIMENSIONS.table.width, depth: FURNITURE_DIMENSIONS.table.depth }
+    });
     
     // Chair configuration
     const chairPositions = [
@@ -269,15 +282,36 @@ export function createFurniture(roomWidth, roomLength) {
         );
         chair.rotation.y = pos.rotation + tableRotation;
         furniture.push(chair);
+        placedObjects.push({
+            pos: { x: tablePos.x + rotatedX, z: tablePos.z + rotatedZ },
+            size: { width: FURNITURE_DIMENSIONS.chair.width, depth: FURNITURE_DIMENSIONS.chair.depth }
+        });
     });
     
     // Create and position shelf
     const shelf = createShelvingUnit();
-    shelf.position.set(0, 0, -roomLength/2 + 0.15);
+    const shelfPos = { x: 0, z: -roomLength/2 + 0.15 };
+    shelf.position.set(shelfPos.x, 0, shelfPos.z);
     furniture.push(shelf);
+    placedObjects.push({
+        pos: shelfPos,
+        size: { width: FURNITURE_DIMENSIONS.shelf.width, depth: FURNITURE_DIMENSIONS.shelf.depth }
+    });
     
-    // Create and position bowl
-    const bowlPosition = Bowl.generateRandomPosition(roomWidth, roomLength);
+    // Create and position bowl, retrying if overlap
+    let bowlPosition;
+    let attempts = 0;
+    const maxAttempts = 20;
+    const bowlSize = { width: 0.4, depth: 0.4 }; // Approximate bowl size (adjust if needed)
+    do {
+        bowlPosition = Bowl.generateRandomPosition(roomWidth, roomLength);
+        attempts++;
+    } while (
+        placedObjects.some(obj => isOverlapping(
+            { x: bowlPosition.x, z: bowlPosition.z }, bowlSize,
+            obj.pos, obj.size
+        )) && attempts < maxAttempts
+    );
     const bowl = new Bowl(bowlPosition);
     furniture.push(bowl.model);
     

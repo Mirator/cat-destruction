@@ -11,6 +11,7 @@ export class Bowl {
         this.createMaterials();
         this.createModel();
         this.fill = 0; // 0 = empty, 1 = full
+        this.targetFill = 0; // For smooth animation
     }
 
     createMaterials() {
@@ -151,8 +152,7 @@ export class Bowl {
         });
         this.currentFood = food;
         this.setHighlight(false);
-        this.fill = 1; // Bowl is full when food is added
-        this.setFoodFill(1);
+        this.targetFill = 1; // Set target fill, not fill directly
         // Notify all cats in the scene about the food
         this.cats.forEach(cat => cat.notifyFoodAdded(this));
         return true;
@@ -163,8 +163,7 @@ export class Bowl {
         this.foodContent.material.visible = false;
         const food = this.currentFood;
         this.currentFood = null;
-        this.fill = 0;
-        this.setFoodFill(0);
+        this.targetFill = 0; // Set target fill, not fill directly
         return food;
     }
 
@@ -216,5 +215,14 @@ export class Bowl {
         this.foodContent.position.y = baseY - (fullHeight * (1 - this.fill)) / 2;
         // Optionally hide if empty
         this.foodContent.visible = this.fill > 0;
+    }
+
+    update(deltaTime) {
+        // Smoothly interpolate fill toward targetFill
+        const speed = 2.5; // fill per second
+        if (Math.abs(this.fill - this.targetFill) > 0.001) {
+            this.fill += Math.sign(this.targetFill - this.fill) * Math.min(Math.abs(this.targetFill - this.fill), speed * deltaTime);
+            this.setFoodFill(this.fill);
+        }
     }
 } 

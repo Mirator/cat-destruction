@@ -600,13 +600,13 @@ export class Cat {
                     if (bowl.fill <= 0) {
                         if (food) food.isConsumed = true;
                         bowl.currentFood = null;
-                        bowl.setFoodFill(0);
+                        bowl.targetFill = 0;
                         cat.state.setHunger(0);
                     }
                     return;
                 }
                 // Reduce bowl fill and hunger
-                bowl.setFoodFill(bowl.fill - fillPerStep);
+                bowl.targetFill = Math.max(0, bowl.targetFill - fillPerStep);
                 cat.state.setHunger(Math.max(0, cat.state.hunger - hungerPerStep));
                 cat.animator.animateEating(0.016);
             }, intervalMs);
