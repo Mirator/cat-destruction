@@ -83,8 +83,6 @@ export class Cat {
         this.createHead(materials);
         this.createTail(materials);
         this.createLegs(materials);
-        this.createMeowBubble();
-        
         this.setupShadows();
     }
 
@@ -189,19 +187,6 @@ export class Cat {
         });
     }
 
-    createMeowBubble() {
-        const geometry = new THREE.SphereGeometry(CAT_CONFIG.meow.size, 8, 8);
-        const material = new THREE.MeshBasicMaterial({
-            color: CAT_CONFIG.meow.color,
-            transparent: true,
-            opacity: 0.7,
-            visible: false
-        });
-        this.meowBubble = new THREE.Mesh(geometry, material);
-        this.model.add(this.meowBubble);
-        this.meowBubble.position.set(0, CAT_CONFIG.meow.height, 0);
-    }
-
     setupShadows() {
         this.model.traverse((object) => {
             if (object.isMesh) {
@@ -211,25 +196,12 @@ export class Cat {
         });
     }
 
-    showMeow() {
-        if (this.state.isMeowing) return;
-        
-        this.state.isMeowing = true;
-        this.meowBubble.material.visible = true;
-        
-        setTimeout(() => {
-            this.state.isMeowing = false;
-            this.meowBubble.material.visible = false;
-        }, CAT_CONFIG.meow.duration * 1000);
-    }
-
     checkEmptyBowl() {
         if (!this.state.targetBowl) return false;
         
         const distance = this.position.distanceTo(this.state.targetBowl.position);
         if (distance < CAT_CONFIG.movement.bowlReachRadius) {
             if (!this.state.targetBowl.hasFood()) {
-                this.showMeow();
                 this.state.targetBowl = null;
                 this.state.targetPosition = null;
                 return true;
@@ -480,7 +452,6 @@ export class Cat {
                 targetPosition: bowl.position.clone()
             });
             this.state.setActivity(ACTIVITY_TYPES.GOING_TO_BOWL);
-            this.showMeow();
         }
     }
 
@@ -543,7 +514,6 @@ export class Cat {
                 lastMeow: now,
                 isMeowing: true
             });
-            this.showMeow();
             this.state.setActivity(ACTIVITY_TYPES.MEOWING);
         }
     }
