@@ -3,12 +3,14 @@ import { Food } from '../objects/food.js';
 import { Bowl } from '../objects/bowl.js';
 import * as THREE from 'three';
 import { FlowerProp } from '../objects/FlowerProp.js';
+import { DialingUI } from '../ui/dialing-ui.js';
 
 export class InteractionManager {
     constructor(scene, player) {
         this.scene = scene;
         this.player = player;
         this.ui = new InteractionUI();
+        this.dialingUI = null;
         this.carriedFood = null;
         this.foodItems = [];
         this.bowls = [];
@@ -16,6 +18,8 @@ export class InteractionManager {
         this.flowerProps = [];
         this.raycaster = new THREE.Raycaster();
         this.telephone = null;
+        this.dialingActive = false;
+        this.parcelShouldSpawn = false;
         
         // Configuration
         this.ROOM_BOUNDS = {
@@ -34,6 +38,13 @@ export class InteractionManager {
 
         this.collectObjects();
         document.addEventListener('keydown', (e) => this.handleKeyPress(e));
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                this.dialingUI = new DialingUI();
+            });
+        } else {
+            this.dialingUI = new DialingUI();
+        }
     }
 
     collectObjects() {
@@ -274,6 +285,7 @@ export class InteractionManager {
     }
 
     handleKeyPress(event) {
+        if (this.dialingActive) return; // Block normal controls during minigame
         if (event.key.toLowerCase() === 'e' && this.player?.camera) {
             if (this.carriedFood) {
                 this.handleDrop();
@@ -337,16 +349,31 @@ export class InteractionManager {
     }
 
     tryUseNearestPhone() {
-        if (!this.telephone) return false;
-        // Raycast for phone in view
+        if (!this.telephone || this.dialingActive) return false;
         this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.player.camera);
         const phoneIntersects = this.raycaster.intersectObject(this.telephone.model, true);
         if (phoneIntersects.length > 0) {
-            // TODO: Trigger minigame or next step
-            // For now, just log to console
-            console.log('Phone interaction triggered!');
+            this.startDialingMinigame();
             return true;
         }
         return false;
+    }
+
+    startDialingMinigame() {
+        this.dialingActive = true;
+        const code = Array.from({length: 5}, () => Math.floor(Math.random() * 10));
+        if (!this.dialingUI) {
+            this.dialingUI = new DialingUI();
+        }
+        this.dialingUI.show(
+            code,
+            () => { // onComplete
+                this.dialingActive = false;
+                this.parcelShouldSpawn = true; // Next step: spawn parcel
+            },
+            () => { // onCancel
+                this.dialingActive = false;
+            }
+        );
     }
 } 

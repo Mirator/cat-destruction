@@ -8,11 +8,15 @@ import { PlayerState } from './src/state/PlayerState.js';
 import { PlayerStatusBar } from './src/ui/playerStatusBar.js';
 import { GameOverScreen } from './src/ui/GameOverScreen.js';
 import { StartScreen } from './src/ui/StartScreen.js';
+import { DialingUI } from './src/ui/dialing-ui.js';
 
 // Initialize the scene
 const { scene, camera, renderer } = createScene();
 document.body.appendChild(renderer.domElement);
 scene.userData.playerCamera = camera;
+
+// Set renderer DOM element for pointer lock management in DialingUI
+DialingUI.setRendererDomElement(renderer.domElement);
 
 // Initialize player state and UI
 const playerState = new PlayerState(100);

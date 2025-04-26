@@ -190,8 +190,7 @@ export function createScene() {
     const furniture = createFurniture(roomWidth, roomLength);
     furniture.forEach(item => scene.add(item));
 
-    // Add wall telephone near the door (fixed position for now)
-    // Place it on the right wall, 1.4m above the floor, near the front
+    // Add wall telephone to the right wall, 1.5m above the floor, near the front
     const phonePosition = new THREE.Vector3(roomWidth/2 - 0.04, 1.5, roomLength/2 - 1.0);
     const wallPhone = new WallTelephone(phonePosition);
     wallPhone.model.userData.telephoneInstance = wallPhone;
