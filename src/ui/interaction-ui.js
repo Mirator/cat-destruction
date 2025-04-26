@@ -88,13 +88,15 @@ export class InteractionUI {
         }
     }
 
-    updateInteractionPrompt(nearestFood, nearestBowl, isCarryingFood, nearestProp) {
+    updateInteractionPrompt(nearestFood, nearestBowl, isCarryingFood, nearestProp, nearestPhone) {
         if (isCarryingFood) {
             if (nearestBowl) {
                 this.showPrompt('Press [E] to fill the bowl');
             } else {
                 this.showPrompt('Press [E] to drop food');
             }
+        } else if (nearestPhone) {
+            this.showPrompt('Press [E] to use the phone');
         } else if (nearestFood) {
             this.showPrompt(`Press [E] to pick up ${nearestFood.getName()}`);
         } else if (nearestProp && nearestProp.isKnockedOver) {

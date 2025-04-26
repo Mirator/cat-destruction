@@ -2,7 +2,7 @@ import { InteractionUI } from '../ui/interaction-ui.js';
 import { Food } from '../objects/food.js';
 import { Bowl } from '../objects/bowl.js';
 import * as THREE from 'three';
-import { FlowerProp } from '../objects/prop.js';
+import { FlowerProp } from '../objects/FlowerProp.js';
 
 export class InteractionManager {
     constructor(scene, player) {
@@ -15,6 +15,7 @@ export class InteractionManager {
         this.dropSurfaces = [];
         this.flowerProps = [];
         this.raycaster = new THREE.Raycaster();
+        this.telephone = null;
         
         // Configuration
         this.ROOM_BOUNDS = {
@@ -40,6 +41,7 @@ export class InteractionManager {
         this.bowls = [];
         this.dropSurfaces = [];
         this.flowerProps = [];
+        this.telephone = null;
         this.scene.traverse((object) => {
             if (object.userData?.foodInstance) {
                 this.foodItems.push(object.userData.foodInstance);
@@ -56,6 +58,9 @@ export class InteractionManager {
                 object.name.includes('shelf')
             )) {
                 this.dropSurfaces.push(object);
+            }
+            if (object.userData?.telephoneInstance) {
+                this.telephone = object.userData.telephoneInstance;
             }
         });
     }
@@ -228,8 +233,24 @@ export class InteractionManager {
         if (nearestProp && nearestProp.isKnockedOver) {
         }
 
+        let nearestPhone = null;
+        let minPhoneDist = 2.2;
+        if (this.telephone) {
+            // Raycast for phone in view
+            this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.player.camera);
+            const phoneIntersects = this.raycaster.intersectObject(this.telephone.model, true);
+            if (phoneIntersects.length > 0) {
+                const dist = this.player.camera.position.distanceTo(this.telephone.model.position);
+                if (dist < minPhoneDist) {
+                    nearestPhone = this.telephone;
+                    minPhoneDist = dist;
+                }
+            }
+            this.telephone.setHighlight(this.telephone === nearestPhone);
+        }
+
         this.updateHighlights(deltaTime, nearestFood, nearestBowl);
-        this.ui.updateInteractionPrompt(nearestFood, nearestBowl, this.carriedFood !== null, nearestProp);
+        this.ui.updateInteractionPrompt(nearestFood, nearestBowl, this.carriedFood !== null, nearestProp, nearestPhone);
         this.ui.updateDistance(this.player.camera, this.foodItems);
     }
 
@@ -258,6 +279,8 @@ export class InteractionManager {
                 this.handleDrop();
             } else if (this.tryResetNearestFlower()) {
                 // Flower was reset, do nothing else
+            } else if (this.tryUseNearestPhone()) {
+                // Phone was used, do nothing else
             } else {
                 this.handlePickup();
             }
@@ -308,6 +331,20 @@ export class InteractionManager {
         });
         if (nearest) {
             nearest.reset();
+            return true;
+        }
+        return false;
+    }
+
+    tryUseNearestPhone() {
+        if (!this.telephone) return false;
+        // Raycast for phone in view
+        this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.player.camera);
+        const phoneIntersects = this.raycaster.intersectObject(this.telephone.model, true);
+        if (phoneIntersects.length > 0) {
+            // TODO: Trigger minigame or next step
+            // For now, just log to console
+            console.log('Phone interaction triggered!');
             return true;
         }
         return false;

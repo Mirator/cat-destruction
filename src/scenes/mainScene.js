@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { createFurniture } from '../objects/furniture.js';
 import { Food } from '../objects/food.js';
-import { FlowerProp } from '../objects/prop.js';
+import { FlowerProp } from '../objects/FlowerProp.js';
 import { FLOWER_CONFIG } from '../config/GameConfig.js';
+import { WallTelephone } from '../objects/WallTelephone.js';
 
 export function createScene() {
     // Create scene, camera and renderer
@@ -188,6 +189,13 @@ export function createScene() {
     // Add furniture
     const furniture = createFurniture(roomWidth, roomLength);
     furniture.forEach(item => scene.add(item));
+
+    // Add wall telephone near the door (fixed position for now)
+    // Place it on the right wall, 1.4m above the floor, near the front
+    const phonePosition = new THREE.Vector3(roomWidth/2 - 0.04, 1.5, roomLength/2 - 1.0);
+    const wallPhone = new WallTelephone(phonePosition);
+    wallPhone.model.userData.telephoneInstance = wallPhone;
+    scene.add(wallPhone.model);
 
     // --- Ensure flowers are not too close to the table ---
     // Find the table in the furniture array
