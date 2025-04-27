@@ -368,6 +368,7 @@ export class InteractionManager {
                         // Remove parcel from scene
                         this.scene.remove(this.carriedParcel.model);
                         this.carriedParcel = null;
+                        this.parcel = null;
                         // Restock shelf
                         if (this.shelf.userData && this.shelf.userData.shelfPositions) {
                             stockShelf(this.shelf, this.shelf.userData.shelfPositions, this.shelf.userData.shelfWidth);
