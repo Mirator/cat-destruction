@@ -362,6 +362,10 @@ export function createScene() {
         // Spawn parcel
         const parcel = new Parcel(parcelPos);
         scene.add(parcel.model);
+        // Ensure interaction manager knows about the new parcel
+        if (scene.userData.interactionManager) {
+            scene.userData.interactionManager.collectObjects();
+        }
     };
 
     return { scene, camera, renderer, roomManager };
