@@ -317,25 +317,21 @@ export class Room {
         if (!this.config.furniture) return;
         const furnitureGroup = new THREE.Group();
         furnitureGroup.name = 'furniture';
-        for (const item of this.config.furniture) {
-            // Only add unique objects if not already created
-            if (item.unique && Room.uniqueObjectsCreated.has(item.type)) continue;
-            let mesh = null;
-            if (item.type === 'table') {
-                mesh = createFurniture(roomWidth, roomLength).find(obj => obj.name === 'table');
-            } else if (item.type === 'chair') {
-                mesh = createFurniture(roomWidth, roomLength).find(obj => obj.name === 'chair');
-            } else if (item.type === 'bed') {
-                mesh = createFurniture(roomWidth, roomLength).find(obj => obj.name === 'bed');
-            } else if (item.type === 'bowl') {
-                mesh = createFurniture(roomWidth, roomLength).find(obj => obj.name === 'food_bowl');
+        // Call createFurniture ONCE and filter objects by config
+        const furnitureObjects = createFurniture(roomWidth, roomLength);
+        // Track how many of each type have been added
+        const used = {};
+        this.config.furniture.forEach(item => {
+            const type = item.type;
+            used[type] = used[type] || 0;
+            // Find the next unused object of this type
+            const obj = furnitureObjects.filter(o => o.name === type)[used[type]];
+            if (obj) {
+                if (item.position) obj.position.copy(new THREE.Vector3(item.position.x, item.position.y, item.position.z));
+                furnitureGroup.add(obj);
+                used[type]++;
             }
-            if (mesh) {
-                if (item.position) mesh.position.copy(new THREE.Vector3(item.position.x, item.position.y, item.position.z));
-                furnitureGroup.add(mesh);
-                if (item.unique) Room.uniqueObjectsCreated.add(item.type);
-            }
-        }
+        });
         this.group.add(furnitureGroup);
     }
     

@@ -426,6 +426,7 @@ export function createFurniture(roomWidth, roomLength) {
         )) || tooCloseToShelf) && attempts < maxAttempts
     );
     const bowl = new Bowl(bowlPosition);
+    bowl.model.name = 'bowl';
     furniture.push(bowl.model);
     
     return furniture;

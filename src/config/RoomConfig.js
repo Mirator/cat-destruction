@@ -29,6 +29,9 @@ export const ROOM_CONFIGS = {
     ],
     furniture: [
       { type: 'table' },
+      { type: 'chair' },
+      { type: 'chair' },
+      { type: 'chair' },
       { type: 'chair' }
     ],
     flowers: { min: 2, max: 4 },
