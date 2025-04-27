@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Room } from '../objects/room/Room.js';
 import { Food } from '../objects/food/food.js';
-import { createParquetTexture, createDynamicWallTexture, createCeilingTexture, createWallMaterial, createWall, createRoom } from '../objects/room/roomUtils.js';
+import { createParquetTexture, createDynamicWallTexture, createCeilingTexture, createWallMaterial, createWall, createRoom, createSharedWall } from '../objects/room/roomUtils.js';
 import { ROOM_DIMENSIONS } from '../config/RoomConfig.js';
 
 /**
@@ -265,7 +265,7 @@ export function createScene() {
         hasPassage: true,
         passageWidth: 1.2,
         passageHeight: 2.2,
-        createSharedWall: false
+        createSharedWall: true
     });
     
     // Set initial camera position - positioned to look at the boundary

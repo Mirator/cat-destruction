@@ -142,8 +142,9 @@ export function createWallMaterial(isLower, pattern, base, accent) {
  * @param {object} wallStyle - Wall style
  * @param {boolean} [withFrames=false] - Add frames
  * @param {object} [passage] - Optional passage { width, height, x } (centered at x, in wall local space)
+ * @param {boolean} [addTrim=true] - Whether to add dado rail (trim)
  */
-export function createWall(width, height, isFrontOrBack, wallStyle, withFrames = false, passage = null) {
+export function createWall(width, height, isFrontOrBack, wallStyle, withFrames = false, passage = null, addTrim = true) {
     const group = new THREE.Group();
     const lowerHeight = height * 0.35;
     const upperHeight = height - lowerHeight;
@@ -163,12 +164,14 @@ export function createWall(width, height, isFrontOrBack, wallStyle, withFrames =
         upper.receiveShadow = true;
         group.add(upper);
         // Dado rail (trim)
-        const trimGeo = new THREE.BoxGeometry(width, 0.04, 0.04);
-        const trimMat = new THREE.MeshStandardMaterial({ color: '#e2c290', roughness: 0.4 });
-        const trim = new THREE.Mesh(trimGeo, trimMat);
-        trim.position.y = lowerHeight + 0.02;
-        trim.renderOrder = 0;
-        group.add(trim);
+        if (addTrim) {
+            const trimGeo = new THREE.BoxGeometry(width, 0.04, 0.04);
+            const trimMat = new THREE.MeshStandardMaterial({ color: '#e2c290', roughness: 0.4 });
+            const trim = new THREE.Mesh(trimGeo, trimMat);
+            trim.position.y = lowerHeight + 0.02;
+            trim.renderOrder = 0;
+            group.add(trim);
+        }
         if (withFrames) {
             addFramesToWall(group, width, height);
         }
@@ -180,9 +183,11 @@ export function createWall(width, height, isFrontOrBack, wallStyle, withFrames =
     // Calculate left and right segment widths
     const leftW = width / 2 + pX - pWidth / 2;
     const rightW = width / 2 - pX - pWidth / 2;
-    
+    const topH = height - pHeight; // Height of the wall above the passage
+    const passageY = pHeight / 2; // Center of the passage opening
+
     // Lower part (below passage)
-    if (passage.height < lowerHeight) {
+    if (pHeight < lowerHeight) {
         // Passage is above dado rail, so just split horizontally
         // Left segment
         if (leftW > 0.01) {
@@ -201,6 +206,16 @@ export function createWall(width, height, isFrontOrBack, wallStyle, withFrames =
             const mesh = new THREE.Mesh(geo, mat);
             mesh.position.x = width/2 - rightW/2;
             mesh.position.y = lowerHeight/2;
+            mesh.receiveShadow = true;
+            group.add(mesh);
+        }
+        // Add wall above passage (lintel)
+        if (topH > 0.01) {
+            const geo = new THREE.PlaneGeometry(pWidth, topH);
+            const mat = createWallMaterial(false, wallStyle.pattern, wallStyle.base, wallStyle.accent);
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.x = pX;
+            mesh.position.y = lowerHeight + pHeight + topH/2;
             mesh.receiveShadow = true;
             group.add(mesh);
         }
@@ -226,33 +241,45 @@ export function createWall(width, height, isFrontOrBack, wallStyle, withFrames =
             mesh.receiveShadow = true;
             group.add(mesh);
         }
+        // Add wall above passage (lintel)
+        if (topH > 0.01) {
+            const geo = new THREE.PlaneGeometry(pWidth, topH);
+            const mat = createWallMaterial(false, wallStyle.pattern, wallStyle.base, wallStyle.accent);
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.x = pX;
+            mesh.position.y = pHeight + topH/2;
+            mesh.receiveShadow = true;
+            group.add(mesh);
+        }
     }
     // Dado rail (trim) - left
-    const leftTrimW = pX - pWidth/2;
-    if (leftTrimW > 0.01) {
-        const trimGeo = new THREE.BoxGeometry(leftTrimW, 0.04, 0.04);
-        const trimMat = new THREE.MeshStandardMaterial({ color: '#e2c290', roughness: 0.4 });
-        const trim = new THREE.Mesh(trimGeo, trimMat);
-        trim.position.x = -width/2 + leftTrimW/2;
-        trim.position.y = lowerHeight + 0.02;
-        trim.renderOrder = 0;
-        group.add(trim);
-    }
-    // Dado rail (trim) - right
-    const rightTrimW = width - (pX + pWidth/2) - (width/2 - (pX + pWidth/2));
-    if (rightTrimW > 0.01) {
-        const trimGeo = new THREE.BoxGeometry(rightTrimW, 0.04, 0.04);
-        const trimMat = new THREE.MeshStandardMaterial({ color: '#e2c290', roughness: 0.4 });
-        const trim = new THREE.Mesh(trimGeo, trimMat);
-        trim.position.x = pX + pWidth/2 + rightTrimW/2 - width/2;
-        trim.position.y = lowerHeight + 0.02;
-        trim.renderOrder = 0;
-        group.add(trim);
-    }
-    // Optionally add frames (to left/right segments only)
-    if (withFrames) {
-        if (leftTrimW > 0.01) addFramesToWall(group, leftTrimW, height);
-        if (rightTrimW > 0.01) addFramesToWall(group, rightTrimW, height);
+    if (addTrim) {
+        const leftTrimW = pX - pWidth/2;
+        if (leftTrimW > 0.01) {
+            const trimGeo = new THREE.BoxGeometry(leftTrimW, 0.04, 0.04);
+            const trimMat = new THREE.MeshStandardMaterial({ color: '#e2c290', roughness: 0.4 });
+            const trim = new THREE.Mesh(trimGeo, trimMat);
+            trim.position.x = -width/2 + leftTrimW/2;
+            trim.position.y = lowerHeight + 0.02;
+            trim.renderOrder = 0;
+            group.add(trim);
+        }
+        // Dado rail (trim) - right
+        const rightTrimW = width - (pX + pWidth/2) - (width/2 - (pX + pWidth/2));
+        if (rightTrimW > 0.01) {
+            const trimGeo = new THREE.BoxGeometry(rightTrimW, 0.04, 0.04);
+            const trimMat = new THREE.MeshStandardMaterial({ color: '#e2c290', roughness: 0.4 });
+            const trim = new THREE.Mesh(trimGeo, trimMat);
+            trim.position.x = pX + pWidth/2 + rightTrimW/2 - width/2;
+            trim.position.y = lowerHeight + 0.02;
+            trim.renderOrder = 0;
+            group.add(trim);
+        }
+        // Optionally add frames (to left/right segments only)
+        if (withFrames) {
+            if (leftTrimW > 0.01) addFramesToWall(group, leftTrimW, height);
+            if (rightTrimW > 0.01) addFramesToWall(group, rightTrimW, height);
+        }
     }
     return group;
 }
@@ -327,4 +354,33 @@ export function createRoom(wallStyle, renderer, passages = {}) {
     ceiling.name = 'ceiling';
     roomGroup.add(ceiling);
     return roomGroup;
+}
+
+/**
+ * Creates a shared wall mesh between two rooms, with a passage (hole) if specified.
+ * @param {Object} options
+ * @param {Object} options.dimensions - { width, height }
+ * @param {THREE.Vector3} options.position - World position for the wall
+ * @param {Object} [options.passage] - Optional passage { width, height, x }
+ * @param {Object} options.style1 - Wall style for one side
+ * @param {Object} options.style2 - Wall style for the other side
+ * @param {number} [options.rotation=0] - Y rotation in radians
+ * @param {boolean} [options.addDoorFrame=false] - Add a door frame (not implemented)
+ * @returns {THREE.Group} Wall mesh group
+ */
+export function createSharedWall({ dimensions, position, passage, style1, style2, rotation = 0, addDoorFrame = false }) {
+    // Create two wall meshes, one for each side, without trim
+    const wall1 = createWall(dimensions.width, dimensions.height, true, style1, false, passage, false);
+    const wall2 = createWall(dimensions.width, dimensions.height, true, style2, false, passage, false);
+    // Flip wall2 to face the opposite direction
+    wall2.rotation.y = Math.PI;
+    // Group them together
+    const group = new THREE.Group();
+    group.add(wall1);
+    group.add(wall2);
+    group.position.copy(position);
+    group.rotation.y = rotation;
+    group.name = 'sharedWall';
+    // Optionally add door frame here in the future
+    return group;
 } 
