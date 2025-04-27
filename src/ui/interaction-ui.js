@@ -4,6 +4,7 @@ export class InteractionUI {
     constructor() {
         this.createPromptElement();
         this.createHelpTipElement();
+        this.createAttentionElement();
     }
 
     createPromptElement() {
@@ -49,6 +50,28 @@ export class InteractionUI {
         document.body.appendChild(this.helpTipElement);
     }
 
+    createAttentionElement() {
+        this.attentionElement = document.createElement('div');
+        this.attentionElement.style.position = 'fixed';
+        this.attentionElement.style.top = '50%';
+        this.attentionElement.style.left = '50%';
+        this.attentionElement.style.transform = 'translate(-50%, -50%)';
+        this.attentionElement.style.backgroundColor = 'rgba(255, 80, 80, 0.97)';
+        this.attentionElement.style.color = '#fff';
+        this.attentionElement.style.padding = '28px 60px';
+        this.attentionElement.style.borderRadius = '24px';
+        this.attentionElement.style.boxShadow = '0 4px 32px rgba(120,80,40,0.18)';
+        this.attentionElement.style.fontFamily = 'Quicksand, Segoe UI, Arial, sans-serif';
+        this.attentionElement.style.fontSize = '2.2rem';
+        this.attentionElement.style.textAlign = 'center';
+        this.attentionElement.style.zIndex = '100002';
+        this.attentionElement.style.display = 'none';
+        this.attentionElement.style.opacity = '0';
+        this.attentionElement.style.transition = 'opacity 0.7s';
+        document.body.appendChild(this.attentionElement);
+        this.attentionTimeout = null;
+    }
+
     showPrompt(text) {
         this.promptElement.textContent = text;
         this.promptElement.style.display = 'block';
@@ -85,5 +108,22 @@ export class InteractionUI {
 
     hideHelpTip() {
         this.helpTipElement.style.display = 'none';
+    }
+
+    showAttention(text, duration = 2500) {
+        this.attentionElement.textContent = text;
+        this.attentionElement.style.display = 'block';
+        this.attentionElement.style.opacity = '1';
+        if (this.attentionTimeout) clearTimeout(this.attentionTimeout);
+        this.attentionTimeout = setTimeout(() => {
+            this.hideAttention();
+        }, duration);
+    }
+
+    hideAttention() {
+        this.attentionElement.style.opacity = '0';
+        setTimeout(() => {
+            this.attentionElement.style.display = 'none';
+        }, 700);
     }
 } 

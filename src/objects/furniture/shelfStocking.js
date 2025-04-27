@@ -52,6 +52,16 @@ export function stockShelf(shelfGroup, shelfPositions, shelfWidth) {
     }
     const numToAdd = Math.min(Math.floor(Math.random() * 2) + 4, available.length);
     const chosen = available.slice(0, numToAdd);
+    // Prepare half fish, half chicken
+    const types = [];
+    for (let i = 0; i < numToAdd; i++) {
+        types.push(i < Math.floor(numToAdd / 2) ? 'FISH' : 'CHICKEN');
+    }
+    // Shuffle types for variety
+    for (let i = types.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [types[i], types[j]] = [types[j], types[i]];
+    }
     // Place new cans
     const sideThickness = 0.05; // from furniture.js
     const partitionWidth = 0.02; // from divider geometry
@@ -62,7 +72,8 @@ export function stockShelf(shelfGroup, shelfPositions, shelfWidth) {
     const rightInnerEdge = shelfWidth / 2 - sideThickness / 2;
     const leftCompartmentMax = -partitionWidth / 2 - canRadius - margin;
     const rightCompartmentMin = partitionWidth / 2 + canRadius + margin;
-    for (const idx of chosen) {
+    for (let i = 0; i < chosen.length; i++) {
+        const idx = chosen[i];
         const comp = compartments[idx];
         const basePos = shelfPositions[comp.shelfIdx];
         let x;
@@ -75,16 +86,13 @@ export function stockShelf(shelfGroup, shelfPositions, shelfWidth) {
             const maxX = rightInnerEdge - canRadius - margin;
             x = minX + Math.random() * (maxX - minX);
         }
-        // If this is the second can in the compartment, offset x a bit for visual separation
         if (compartmentCounts[idx] === 1) {
             x += comp.left ? 0.03 : -0.03;
         }
         const zRange = shelfDepth / 2 - canRadius - margin;
         const z = basePos.z - zRange + Math.random() * (2 * zRange);
         const pos = { x, y: basePos.y, z };
-        // Debug: log can position
-        // console.log(`[ShelfStocking] Placing can: shelfIdx=${comp.shelfIdx}, left=${comp.left}, pos=`, pos);
-        const type = Math.random() < 0.7 ? 'FISH' : 'CHICKEN';
+        const type = types[i];
         const food = new Food(type, new THREE.Vector3(pos.x, pos.y, pos.z));
         food.model.rotation.set(0, 0, 0);
         shelfGroup.userData.foodItems.push(food);

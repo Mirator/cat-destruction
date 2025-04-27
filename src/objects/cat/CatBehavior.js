@@ -1,5 +1,13 @@
 import { ACTIVITY_TYPES, CAT_CONFIG, UI_CONFIG } from '../../config/GameConfig.js';
 import { FlowerProp } from '../props/FlowerProp.js';
+import { InteractionUI } from '../../ui/interaction-ui.js';
+
+const FOOD_TYPES = ['FISH', 'CHICKEN'];
+let globalAttentionUI = null;
+function getAttentionUI() {
+    if (!globalAttentionUI) globalAttentionUI = new InteractionUI();
+    return globalAttentionUI;
+}
 
 export class CatBehavior {
     constructor(cat, playerState = null) {
@@ -32,6 +40,20 @@ export class CatBehavior {
             this.angryDuration += deltaTime;
         } else {
             if (this.angryDuration > 0) this.angryDuration = 0;
+        }
+        // If hungry and no food in any bowl, demand a food type
+        if (this.state.hunger > CAT_CONFIG.hunger.thresholds.hungry && !this.cat.findNearestBowlWithFood()) {
+            if (!this.state.food.foodPreference) {
+                // Pick a random preference
+                const pref = FOOD_TYPES[Math.floor(Math.random() * FOOD_TYPES.length)];
+                this.state.setFoodPreference(pref);
+                getAttentionUI().showAttention(`Cat wants ${pref === 'FISH' ? 'Fish' : 'Chicken'}!`, 3000);
+            }
+        } else {
+            // Reset preference if food is available
+            if (this.state.food.foodPreference) {
+                this.state.setFoodPreference(null);
+            }
         }
     }
 

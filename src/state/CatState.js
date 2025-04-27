@@ -21,7 +21,8 @@ export class CatState {
                 isEating: false,
                 heardFood: false,
                 heardFoodBowl: null,
-                lastFoodSound: 0
+                lastFoodSound: 0,
+                foodPreference: null
             },
             animation: {
                 tailWag: 0,
@@ -38,6 +39,7 @@ export class CatState {
     get movement() { return this.state.movement; }
     get food() { return this.state.food; }
     get animation() { return this.state.animation; }
+    get foodPreference() { return this.state.food.foodPreference; }
 
     setHunger(value) {
         this.state.hunger = Math.max(0, Math.min(100, value));
@@ -72,5 +74,9 @@ export class CatState {
 
     updateAnimation(updates) {
         Object.assign(this.state.animation, updates);
+    }
+
+    setFoodPreference(type) {
+        this.state.food.foodPreference = type;
     }
 } 

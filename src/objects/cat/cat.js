@@ -569,6 +569,14 @@ export class Cat {
             const steps = totalTime / intervalMs;
             const fillPerStep = 1 / steps;
             const hungerPerStep = cat.state.hunger / steps;
+            const foodType = food ? food.type : null;
+            const wantedType = cat.state.food.foodPreference;
+            let hungerMultiplier = 1.0;
+            let angerMultiplier = 1.0;
+            if (wantedType && foodType && foodType !== wantedType) {
+                hungerMultiplier = 0.8; // 20% less hunger reduction
+                angerMultiplier = 0.25; // 75% less anger reduction
+            }
             const interval = setInterval(() => {
                 if (!cat.state.food.isEating || !bowl.hasFood()) {
                     clearInterval(interval);
@@ -578,13 +586,16 @@ export class Cat {
                         if (food) food.isConsumed = true;
                         bowl.currentFood = null;
                         bowl.targetFill = 0;
-                        cat.state.setHunger(0);
                     }
                     return;
                 }
                 // Reduce bowl fill and hunger
                 bowl.targetFill = Math.max(0, bowl.targetFill - fillPerStep);
-                cat.state.setHunger(Math.max(0, cat.state.hunger - hungerPerStep));
+                cat.state.setHunger(Math.max(0, cat.state.hunger - hungerPerStep * hungerMultiplier));
+                // Reduce anger if eating (less if not preferred)
+                if (cat.state.anger > 0) {
+                    cat.state.setAnger(Math.max(0, cat.state.anger - (hungerPerStep/2) * angerMultiplier));
+                }
                 cat.animator.animateEating(0.016);
             }, intervalMs);
         }
