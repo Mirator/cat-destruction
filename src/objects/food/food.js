@@ -205,7 +205,6 @@ export class Food extends Highlightable {
 
     static isLookingAt(camera, foodObject) {
         if (!this.scene) {
-            console.warn('Scene not set for Food class. Call Food.setScene(scene) first.');
             return false;
         }
 

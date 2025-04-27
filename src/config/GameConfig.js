@@ -178,6 +178,7 @@ export const BOWL_CONFIG = {
     position: {
         wallOffset: 0.3
     },
+    mainRoomPosition: { x: 1.2, y: 0, z: 2.0 },
     highlight: {
         color: 0x00FF00,
         pulseSpeed: 2.0,

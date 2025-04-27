@@ -42,8 +42,16 @@ export class CatBehavior {
             if (this.angryDuration > 0) this.angryDuration = 0;
         }
         // If hungry and no food in any bowl, demand a food type
-        if (this.state.hunger > CAT_CONFIG.hunger.thresholds.hungry && !this.cat.findNearestBowlWithFood()) {
-            if (!this.state.food.foodPreference) {
+        const now = Date.now();
+        const cooldown = 10000; // 10 seconds
+        if (
+            this.state.hunger > CAT_CONFIG.hunger.thresholds.hungry &&
+            !this.cat.findNearestBowlWithFood()
+        ) {
+            if (
+                !this.state.food.foodPreference &&
+                (!this.state.food.foodPreferenceCooldown || now - this.state.food.foodPreferenceCooldown > cooldown)
+            ) {
                 // Pick a random preference
                 const pref = FOOD_TYPES[Math.floor(Math.random() * FOOD_TYPES.length)];
                 this.state.setFoodPreference(pref);

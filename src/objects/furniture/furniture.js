@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Food } from '../food/food.js';
 import { Bowl } from './bowl.js';
 import { stockShelf } from './shelfStocking.js';
+import { BOWL_CONFIG } from '../../config/GameConfig.js';
 
 // Common material configurations
 const WOOD_MATERIAL_CONFIG = {
@@ -404,27 +405,8 @@ export function createFurniture(roomWidth, roomLength) {
         size: { width: FURNITURE_DIMENSIONS.bed.width, depth: FURNITURE_DIMENSIONS.bed.depth }
     });
     
-    // Create and position bowl, retrying if overlap
-    let bowlPosition;
-    let attempts = 0;
-    const maxAttempts = 20;
-    const bowlSize = { width: 0.4, depth: 0.4 }; // Approximate bowl size (adjust if needed)
-    const shelfBackWallZ = -roomLength/2 + 0.15;
-    const shelfWidth = FURNITURE_DIMENSIONS.shelf.width;
-    const shelfNoGoZone = shelfWidth / 2 + 0.25; // 0.25m margin
-    let isBackWall, tooCloseToShelf;
-    do {
-        bowlPosition = Bowl.generateRandomPosition(roomWidth, roomLength);
-        attempts++;
-        // If bowl is on the back wall (z close to shelfBackWallZ), ensure x is far enough from shelf
-        isBackWall = Math.abs(bowlPosition.z - shelfBackWallZ) < 0.2;
-        tooCloseToShelf = isBackWall && Math.abs(bowlPosition.x) < shelfNoGoZone;
-    } while (
-        (placedObjects.some(obj => isOverlapping(
-            { x: bowlPosition.x, z: bowlPosition.z }, bowlSize,
-            obj.pos, obj.size
-        )) || tooCloseToShelf) && attempts < maxAttempts
-    );
+    // Create and position bowl at fixed config position
+    const bowlPosition = new THREE.Vector3(BOWL_CONFIG.mainRoomPosition.x, BOWL_CONFIG.mainRoomPosition.y, BOWL_CONFIG.mainRoomPosition.z);
     const bowl = new Bowl(bowlPosition);
     bowl.model.name = 'bowl';
     furniture.push(bowl.model);

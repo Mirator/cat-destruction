@@ -43,14 +43,19 @@ export class Cat {
         this.scene.add(this.model);
         this.updatePosition();
         
-        // Register with all bowls in the scene
-        this.scene.children
-            .filter(child => child instanceof Bowl)
-            .forEach(bowl => bowl.registerCat(this));
+        // Register with all bowls in the scene (robust to how bowls are added)
+        this.scene.traverse(obj => {
+            if (obj.userData && obj.userData.bowlInstance) {
+                obj.userData.bowlInstance.registerCat(this);
+            }
+        });
 
         this.behavior = new CatBehavior(this, playerState);
         this.blockedFrames = 0;
         this.waypoints = [];
+        this.lastBowlApproachTime = null;
+        this.lastBowlApproachPosition = null;
+        this.stuckTime = 0;
     }
 
     _setupAudioContextOnUserGesture() {
@@ -450,6 +455,54 @@ export class Cat {
         this.uiManager.update();
         const movement = this.state.movement;
         const foodState = this.state.food;
+        if (this.state.activity === ACTIVITY_TYPES.GOING_TO_BOWL && movement.targetPosition) {
+            // Prevent any activity/status change except for eating
+            if (!this.lastBowlApproachTime) {
+                this.lastBowlApproachTime = performance.now();
+                this.lastBowlApproachPosition = this.position.clone();
+                this.stuckTime = 0;
+            }
+            // Move directly toward the bowl at a fixed speed, ignoring collisions
+            const toTarget = movement.targetPosition.clone().sub(this.position);
+            const distance = toTarget.length();
+            const speed = 1.5; // meters per second
+            if (distance > 0.01) {
+                const step = Math.min(distance, speed * deltaTime);
+                toTarget.normalize();
+                this.position.add(toTarget.multiplyScalar(step));
+                this.updatePosition();
+                // Check if stuck (not making progress)
+                if (this.lastBowlApproachPosition.distanceTo(this.position) < 0.01) {
+                    this.stuckTime += deltaTime;
+                } else {
+                    this.stuckTime = 0;
+                    this.lastBowlApproachPosition.copy(this.position);
+                }
+                // If stuck for more than 2 seconds, teleport to bowl
+                if (this.stuckTime > 2.0) {
+                    this.position.copy(movement.targetPosition);
+                    this.updatePosition();
+                    this.stuckTime = 0;
+                }
+            }
+            // If close enough, set activity to EATING
+            if (foodState.targetBowl && this.position.distanceTo(foodState.targetBowl.position) < CAT_CONFIG.movement.bowlReachRadius) {
+                this.state.setActivity(ACTIVITY_TYPES.EATING);
+                if (typeof this.eat === 'function') this.eat(foodState.targetBowl);
+                this.state.updateFood({ isEating: true, targetBowl: null });
+                this.state.updateMovement({ targetPosition: null });
+                this.lastBowlApproachTime = null;
+                this.lastBowlApproachPosition = null;
+                this.stuckTime = 0;
+            }
+            // Prevent any other activity change while going to bowl
+            return;
+        } else {
+            // Reset stuck logic if not going to bowl
+            this.lastBowlApproachTime = null;
+            this.lastBowlApproachPosition = null;
+            this.stuckTime = 0;
+        }
         if (movement.currentSpeed > 0) {
             this.animator.animateWalking(Math.min(deltaTime, 0.1));
         } else {
@@ -458,22 +511,26 @@ export class Cat {
     }
 
     notifyFoodAdded(bowl) {
-        if (this.state.hunger >= CAT_CONFIG.hunger.thresholds.interested && !this.state.food.isEating) {
-        }
-        this.state.updateFood({
-            heardFood: true,
-            heardFoodBowl: bowl,
-            lastFoodSound: Date.now()
-        });
-        this.state.setActivity(ACTIVITY_TYPES.HEARD_FOOD);
+
         if (this.state.hunger >= CAT_CONFIG.hunger.thresholds.interested && !this.state.food.isEating) {
             this.state.updateFood({
+                heardFood: true,
+                heardFoodBowl: bowl,
+                lastFoodSound: Date.now(),
                 targetBowl: bowl
             });
             this.state.updateMovement({
                 targetPosition: bowl.position.clone()
             });
             this.state.setActivity(ACTIVITY_TYPES.GOING_TO_BOWL);
+
+        } else {
+            this.state.updateFood({
+                heardFood: true,
+                heardFoodBowl: bowl,
+                lastFoodSound: Date.now()
+            });
+            this.state.setActivity(ACTIVITY_TYPES.HEARD_FOOD);
         }
     }
 

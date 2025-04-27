@@ -22,7 +22,8 @@ export class CatState {
                 heardFood: false,
                 heardFoodBowl: null,
                 lastFoodSound: 0,
-                foodPreference: null
+                foodPreference: null,
+                foodPreferenceCooldown: 0
             },
             animation: {
                 tailWag: 0,
@@ -78,5 +79,6 @@ export class CatState {
 
     setFoodPreference(type) {
         this.state.food.foodPreference = type;
+        this.state.food.foodPreferenceCooldown = Date.now();
     }
 } 

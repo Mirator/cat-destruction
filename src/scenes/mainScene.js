@@ -248,15 +248,6 @@ export function createScene() {
     directionalLight.shadow.mapSize.height = 1024;
     scene.add(directionalLight);
 
-    // --- Randomly assign the bowl to one room config before room creation ---
-    const roomConfigKeys = ['mainRoom', 'sleepingRoom'];
-    const randomKey = roomConfigKeys[Math.floor(Math.random() * roomConfigKeys.length)];
-    if (!ROOM_CONFIGS[randomKey].furniture) ROOM_CONFIGS[randomKey].furniture = [];
-    // Remove any previous bowl assignment (in case of hot reload)
-    ROOM_CONFIGS.mainRoom.furniture = ROOM_CONFIGS.mainRoom.furniture.filter(f => f.type !== 'bowl');
-    ROOM_CONFIGS.sleepingRoom.furniture = ROOM_CONFIGS.sleepingRoom.furniture.filter(f => f.type !== 'bowl');
-    ROOM_CONFIGS[randomKey].furniture.push({ type: 'bowl' });
-
     // --- Create Room Manager ---
     const roomManager = new RoomManager(scene, renderer);
     
