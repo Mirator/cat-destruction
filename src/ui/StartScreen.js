@@ -65,7 +65,7 @@ export class StartScreen {
 
         // Introduction
         const intro = document.createElement('div');
-        intro.innerHTML = `Welcome to your cozy home!<br>Your goal is to keep your mischievous cat happy and well-fed.<br><br><i>Feed her before she gets too hungry... or she might cause chaos!</i>`;
+        intro.innerHTML = `Welcome to your cozy home!<br>Your goal is to keep your mischievous cat, Vincent, happy and well-fed.<br>Each time you play, the rooms are a little bit different.<br><br><i>Feed Vincent before he gets too hungry... or he might cause chaos!</i>`;
         intro.style.marginBottom = '2rem';
         intro.style.textAlign = 'center';
         intro.style.fontSize = '1.25rem';
