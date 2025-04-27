@@ -172,17 +172,22 @@ export class Bowl extends Highlightable {
     static generateRandomPosition(roomWidth, roomLength) {
         const margin = 0.5;
         const wallOffset = BOWL_CONFIG.position.wallOffset;
-        const alongBack = Math.random() < 0.7;
-        
+        // Pick a wall at random: 0=back, 1=front, 2=left, 3=right
+        const wall = Math.floor(Math.random() * 4);
         let x, z;
-        if (alongBack) {
+        if (wall === 0) { // back wall (south)
             x = (Math.random() * (roomWidth - 2 * margin)) - (roomWidth/2 - margin);
             z = -roomLength/2 + wallOffset;
-        } else {
-            x = Math.random() < 0.5 ? -roomWidth/2 + wallOffset : roomWidth/2 - wallOffset;
+        } else if (wall === 1) { // front wall (north)
+            x = (Math.random() * (roomWidth - 2 * margin)) - (roomWidth/2 - margin);
+            z = roomLength/2 - wallOffset;
+        } else if (wall === 2) { // left wall (west)
+            x = -roomWidth/2 + wallOffset;
+            z = (Math.random() * (roomLength - 2 * margin)) - (roomLength/2 - margin);
+        } else { // right wall (east)
+            x = roomWidth/2 - wallOffset;
             z = (Math.random() * (roomLength - 2 * margin)) - (roomLength/2 - margin);
         }
-        
         return new THREE.Vector3(x, 0, z);
     }
 

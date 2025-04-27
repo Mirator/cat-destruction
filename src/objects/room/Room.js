@@ -327,6 +327,8 @@ export class Room {
                 mesh = createFurniture(roomWidth, roomLength).find(obj => obj.name === 'chair');
             } else if (item.type === 'bed') {
                 mesh = createFurniture(roomWidth, roomLength).find(obj => obj.name === 'bed');
+            } else if (item.type === 'bowl') {
+                mesh = createFurniture(roomWidth, roomLength).find(obj => obj.name === 'food_bowl');
             }
             if (mesh) {
                 if (item.position) mesh.position.copy(new THREE.Vector3(item.position.x, item.position.y, item.position.z));
