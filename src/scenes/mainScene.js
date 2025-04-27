@@ -1,13 +1,227 @@
 import * as THREE from 'three';
-import { createFurniture } from '../objects/furniture/furniture.js';
+import { Room } from '../objects/room/Room.js';
 import { Food } from '../objects/food/food.js';
-import { FlowerProp } from '../objects/props/FlowerProp.js';
-import { FLOWER_CONFIG } from '../config/GameConfig.js';
-import { WallTelephone } from '../objects/props/WallTelephone.js';
-import { Parcel } from '../objects/props/parcel.js';
-import { createParquetTexture, createDynamicWallTexture, createCeilingTexture, createWallMaterial, createWall, createRoom } from '../objects/utils/roomUtils.js';
-import { createPictureFrame } from '../objects/props/pictureFrames.js';
-import { ROOM_DIMENSIONS, WALL_PALETTES, WALL_PATTERNS } from '../config/RoomConfig.js';
+import { createParquetTexture, createDynamicWallTexture, createCeilingTexture, createWallMaterial, createWall, createRoom } from '../objects/room/roomUtils.js';
+import { ROOM_DIMENSIONS } from '../config/RoomConfig.js';
+
+/**
+ * Manages rooms, connections between rooms, and shared walls
+ */
+class RoomManager {
+    constructor(scene, renderer) {
+        this.scene = scene;
+        this.renderer = renderer;
+        this.rooms = new Map();
+        this.sharedWalls = [];
+    }
+    
+    /**
+     * Create a new room and add it to the manager
+     * @param {Object} options - Room creation options
+     * @returns {Room} - The newly created room
+     */
+    createRoom(options) {
+        const room = new Room({
+            position: options.position || new THREE.Vector3(0, 0, 0),
+            config: options.config || {},
+            renderer: this.renderer,
+            id: options.id || `room_${this.rooms.size}`
+        });
+        
+        this.rooms.set(room.id, room);
+        room.addToScene(this.scene);
+        return room;
+    }
+    
+    /**
+     * Connect two rooms with optional shared wall
+     * @param {string} room1Id - ID of first room
+     * @param {string} room2Id - ID of second room
+     * @param {string} direction - Direction from room1 to room2 ('north', 'south', 'east', 'west')
+     * @param {Object} options - Connection options including passage and shared wall config
+     */
+    connectRooms(room1Id, room2Id, direction, options = {}) {
+        const room1 = this.rooms.get(room1Id);
+        const room2 = this.rooms.get(room2Id);
+        
+        if (!room1 || !room2) {
+            console.error(`Cannot connect rooms: room not found`);
+            return;
+        }
+        
+        // Default connection options
+        const defaults = {
+            hasPassage: true,
+            passageWidth: 1.2,
+            passageHeight: 2.2,
+            addDoorFrame: true,
+            createSharedWall: options.hasPassage === false
+        };
+        
+        const config = { ...defaults, ...options };
+        
+        // Configure the passage if one exists
+        const passage = config.hasPassage ? {
+            width: config.passageWidth,
+            height: config.passageHeight,
+            x: config.passageX || 0,
+            y: config.passageY || defaults.passageHeight / 2
+        } : null;
+        
+        // Connect the rooms logically (this handles wall skipping)
+        room1.connectTo(room2, direction, passage);
+        
+        // If createSharedWall is true, we should create a wall at the boundary
+        if (config.createSharedWall) {
+            this.createSharedWallBetween(room1, room2, direction, {
+                passage,
+                addDoorFrame: config.addDoorFrame
+            });
+        }
+    }
+    
+    /**
+     * Create a shared wall between two connected rooms
+     */
+    createSharedWallBetween(room1, room2, direction, options = {}) {
+        if (!room1 || !room2) return;
+        
+        const roomWidth = ROOM_DIMENSIONS.width;
+        const roomLength = ROOM_DIMENSIONS.length;
+        const roomHeight = ROOM_DIMENSIONS.height;
+        
+        // Calculate wall position and rotation based on direction
+        let position = new THREE.Vector3();
+        let rotation = 0;
+        
+        // Position the wall at the boundary between the rooms
+        if (direction === 'east') {
+            position.set(
+                room1.position.x + roomWidth/2,
+                room1.position.y, 
+                room1.position.z
+            );
+            rotation = -Math.PI / 2;
+        } else if (direction === 'west') {
+            position.set(
+                room1.position.x - roomWidth/2,
+                room1.position.y, 
+                room1.position.z
+            );
+            rotation = Math.PI / 2;
+        } else if (direction === 'north') {
+            position.set(
+                room1.position.x,
+                room1.position.y, 
+                room1.position.z + roomLength/2
+            );
+            rotation = Math.PI;
+        } else if (direction === 'south') {
+            position.set(
+                room1.position.x,
+                room1.position.y, 
+                room1.position.z - roomLength/2
+            );
+            rotation = 0;
+        }
+        
+        // Get wall dimensions based on direction
+        const wallWidth = (direction === 'north' || direction === 'south') ? roomWidth : roomLength;
+        
+        // Create the shared wall
+        const sharedWall = createSharedWall({
+            dimensions: { width: wallWidth, height: roomHeight },
+            position,
+            passage: options.passage,
+            style1: room1.wallStyle,
+            style2: room2.wallStyle,
+            rotation,
+            addDoorFrame: options.addDoorFrame
+        });
+        
+        // Add to scene and track
+        this.scene.add(sharedWall);
+        this.sharedWalls.push(sharedWall);
+        return sharedWall;
+    }
+    
+    /**
+     * Get a room by its ID
+     */
+    getRoom(roomId) {
+        return this.rooms.get(roomId);
+    }
+    
+    /**
+     * Create a grid of connected rooms
+     * @param {Object} options - Grid configuration
+     * @returns {Object} Map of created rooms by position key
+     */
+    createRoomGrid(options = {}) {
+        const defaults = {
+            rows: 2,
+            cols: 2,
+            roomSpacing: { x: ROOM_DIMENSIONS.width, z: ROOM_DIMENSIONS.length },
+            startPosition: { x: 0, y: 0, z: 0 },
+            passageConfig: { width: 1.2, height: 2.2 },
+            createSharedWalls: false
+        };
+        
+        const config = { ...defaults, ...options };
+        const { rows, cols, roomSpacing, startPosition } = config;
+        
+        // Create rooms with position based on grid
+        const roomsById = {};
+        const roomsByPosition = {};
+        
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+                const position = new THREE.Vector3(
+                    startPosition.x + col * roomSpacing.x,
+                    startPosition.y,
+                    startPosition.z + row * roomSpacing.z
+                );
+                
+                const roomId = `room_${row}_${col}`;
+                const room = this.createRoom({
+                    id: roomId,
+                    position,
+                    config: {}
+                });
+                
+                roomsById[roomId] = room;
+                roomsByPosition[`${row}_${col}`] = room;
+            }
+        }
+        
+        // Connect adjacent rooms
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+                const currentRoomId = `room_${row}_${col}`;
+                
+                // Connect to east room if it exists
+                if (col < cols - 1) {
+                    const eastRoomId = `room_${row}_${col+1}`;
+                    this.connectRooms(currentRoomId, eastRoomId, 'east', {
+                        ...config.passageConfig,
+                        createSharedWall: config.createSharedWalls
+                    });
+                }
+                
+                // Connect to south room if it exists
+                if (row < rows - 1) {
+                    const southRoomId = `room_${row+1}_${col}`;
+                    this.connectRooms(currentRoomId, southRoomId, 'south', {
+                        ...config.passageConfig,
+                        createSharedWall: config.createSharedWalls
+                    });
+                }
+            }
+        }
+        
+        return { roomsById, roomsByPosition };
+    }
+}
 
 export function createScene() {
     // Create scene, camera and renderer
@@ -32,233 +246,31 @@ export function createScene() {
     directionalLight.shadow.mapSize.height = 1024;
     scene.add(directionalLight);
 
-    // Room dimensions (in meters)
-    const roomWidth = ROOM_DIMENSIONS.width;
-    const roomLength = ROOM_DIMENSIONS.length;
-    const roomHeight = ROOM_DIMENSIONS.height;
-
-    // --- Cozy Room (walls, floor, ceiling, frames, trims) ---
-    function randomWallStyle() {
-        const palette = WALL_PALETTES[Math.floor(Math.random() * WALL_PALETTES.length)];
-        const pattern = WALL_PATTERNS[Math.floor(Math.random() * WALL_PATTERNS.length)];
-        return { pattern, base: palette.base, accent: palette.accent };
-    }
-    const wallStyle = randomWallStyle();
-    const room = createRoom(wallStyle, renderer);
-    scene.add(room);
-
-    // --- Cozy Ceiling ---
-    const ceilingTexture = createCeilingTexture(renderer);
-    const ceilingMaterial = new THREE.MeshStandardMaterial({
-        map: ceilingTexture,
-        color: 0xf7f3e8,
-        roughness: 0.8,
-        metalness: 0.05
+    // --- Create Room Manager ---
+    const roomManager = new RoomManager(scene, renderer);
+    
+    // Create two adjacent rooms
+    const room1 = roomManager.createRoom({
+        id: 'room1',
+        position: new THREE.Vector3(0, 0, 0)
     });
-    const ceilingGeometry = new THREE.PlaneGeometry(roomWidth, roomLength);
-    const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
-    ceiling.position.y = roomHeight;
-    ceiling.rotation.x = Math.PI / 2;
-    ceiling.receiveShadow = true;
-    ceiling.name = 'ceiling';
-    scene.add(ceiling);
-
-    // --- Ceiling Lighting ---
-    // Add a cozy ceiling lamp (PointLight with soft shadows)
-    const ceilingLight = new THREE.PointLight(0xfff8e1, 1.1, 10, 2);
-    ceilingLight.position.set(0, roomHeight - 0.05, 0); // Slightly below the ceiling center
-    ceilingLight.castShadow = true;
-    ceilingLight.shadow.mapSize.width = 1024;
-    ceilingLight.shadow.mapSize.height = 1024;
-    ceilingLight.shadow.radius = 8;
-    ceilingLight.shadow.bias = -0.002;
-    scene.add(ceilingLight);
-    // Optionally, add a visible lamp mesh (simple disc)
-    const lampGeometry = new THREE.CircleGeometry(0.22, 24);
-    const lampMaterial = new THREE.MeshStandardMaterial({ color: 0xfff8e1, emissive: 0xffe4b5, emissiveIntensity: 0.7, roughness: 0.5 });
-    const lampMesh = new THREE.Mesh(lampGeometry, lampMaterial);
-    lampMesh.position.set(0, roomHeight - 0.01, 0);
-    lampMesh.rotation.x = -Math.PI / 2;
-    lampMesh.receiveShadow = false;
-    lampMesh.castShadow = false;
-    lampMesh.name = 'ceiling_lamp';
-    scene.add(lampMesh);
-
-    // --- Add a Door to a Random Wall ---
-    // Helper to create a simple door texture
-    function createDoorTexture() {
-        const size = 128;
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size * 2;
-        const ctx = canvas.getContext('2d');
-        // Door base
-        ctx.fillStyle = '#bfa16a';
-        ctx.fillRect(0, 0, size, size * 2);
-        // Door panels
-        ctx.strokeStyle = '#8a6a3a';
-        ctx.lineWidth = 6;
-        ctx.strokeRect(10, 10, size - 20, size * 2 - 20);
-        ctx.lineWidth = 3;
-        ctx.strokeRect(25, 25, size - 50, size - 40);
-        ctx.strokeRect(25, size + 15, size - 50, size - 40);
-        // Door knob
-        ctx.beginPath();
-        ctx.arc(size - 25, size, 7, 0, 2 * Math.PI);
-        ctx.fillStyle = '#e2c290';
-        ctx.fill();
-        // Label
-        ctx.font = 'bold 20px sans-serif';
-        ctx.fillStyle = '#6a4a1a';
-        ctx.fillText('DOOR', 30, size + 10);
-        return new THREE.CanvasTexture(canvas);
-    }
-    const doorTexture = createDoorTexture();
-    const doorMaterial = new THREE.MeshStandardMaterial({ map: doorTexture, roughness: 0.5, metalness: 0.1 });
-    const doorWidth = 0.9;
-    const doorHeight = 2.1;
-    // Add furniture
-    const furniture = createFurniture(roomWidth, roomLength);
-    furniture.forEach(item => scene.add(item));
-
-    // Add wall telephone to the right wall, 1.5m above the floor, near the front
-    const phonePosition = new THREE.Vector3(roomWidth/2 - 0.04, 1.5, roomLength/2 - 1.0);
-    const wallPhone = new WallTelephone(phonePosition);
-    wallPhone.model.userData.telephoneInstance = wallPhone;
-    scene.add(wallPhone.model);
-
-    // --- Ensure flowers are not too close to the table ---
-    // Find the table in the furniture array
-    const table = furniture.find(obj => obj.name === 'table');
-    const tablePos = table ? table.position : new THREE.Vector3(0, 0, 0);
-    // Table size from config
-    const tableSize = { width: 1.4, depth: 1.0 };
-    // Helper: check if two objects are too close (AABB in XZ)
-    function isTooCloseXZ(posA, sizeA, posB, sizeB, minGap = 0.25) {
-        return (
-            Math.abs(posA.x - posB.x) < (sizeA.width / 2 + sizeB.width / 2 + minGap) &&
-            Math.abs(posA.z - posB.z) < (sizeA.depth / 2 + sizeB.depth / 2 + minGap)
-        );
-    }
-    // Helper: clamp position within room bounds
-    function clampToRoom(x, z, margin = 0.3) {
-        return {
-            x: Math.max(-roomWidth/2 + margin, Math.min(roomWidth/2 - margin, x)),
-            z: Math.max(-roomLength/2 + margin, Math.min(roomLength/2 - margin, z))
-        };
-    }
-    // Add flower props, adjusting if too close to table
-    const flowerModels = [];
-    FLOWER_CONFIG.variants.forEach(variant => {
-        let pos = { ...variant.position };
-        const flowerSize = { width: 0.18, depth: 0.18 }; // Pot + leaves
-        // If too close, shift along X or Z (simple logic)
-        if (isTooCloseXZ(pos, flowerSize, tablePos, tableSize)) {
-            // Try shifting along X first
-            if (pos.x < tablePos.x) pos.x -= (tableSize.width/2 + flowerSize.width/2 + 0.3);
-            else pos.x += (tableSize.width/2 + flowerSize.width/2 + 0.3);
-            // Clamp to room
-            const clamped = clampToRoom(pos.x, pos.z);
-            pos.x = clamped.x;
-            pos.z = clamped.z;
-            // If still too close, shift along Z
-            if (isTooCloseXZ(pos, flowerSize, tablePos, tableSize)) {
-                if (pos.z < tablePos.z) pos.z -= (tableSize.depth/2 + flowerSize.depth/2 + 0.3);
-                else pos.z += (tableSize.depth/2 + flowerSize.depth/2 + 0.3);
-                const clamped2 = clampToRoom(pos.x, pos.z);
-                pos.x = clamped2.x;
-                pos.z = clamped2.z;
-            }
-        }
-        const flower = new FlowerProp(
-            new THREE.Vector3(pos.x, pos.y, pos.z),
-            { flowerColor: variant.flowerColor }
-        );
-        scene.add(flower.model);
-        flowerModels.push({ position: new THREE.Vector3(pos.x, pos.y, pos.z), size: flowerSize });
+    
+    const room2 = roomManager.createRoom({
+        id: 'room2',
+        position: new THREE.Vector3(ROOM_DIMENSIONS.width, 0, 0)
     });
-
-    // --- Door Placement: Avoid Overlap with Shelf, Flowers, Telephone, and Bowl ---
-    // Get shelf position/size
-    const shelfObj = furniture.find(obj => obj.name === 'shelf');
-    const shelfSize = { width: 1.2, depth: 0.3 };
-    const shelfPos = shelfObj ? shelfObj.position : null;
-    // Telephone info (always on right wall)
-    const telephoneSize = { width: 0.18, depth: 0.08 }; // Approximate
-    const telephonePos = new THREE.Vector3(roomWidth/2 - 0.04, 1.5, roomLength/2 - 1.0);
-    // Bowl info
-    const bowlObj = furniture.find(obj => obj.name === 'bowl');
-    const bowlSize = { width: 0.4, depth: 0.4 };
-    const bowlPos = bowlObj ? bowlObj.position : null;
-    // Helper: check overlap in XZ
-    function isOverlapXZ(posA, sizeA, posB, sizeB, minGap = 0.15) {
-        return (
-            Math.abs(posA.x - posB.x) < (sizeA.width / 2 + sizeB.width / 2 + minGap) &&
-            Math.abs(posA.z - posB.z) < (sizeA.depth / 2 + sizeB.depth / 2 + minGap)
-        );
-    }
-    // Try to place the door up to 20 times
-    let doorPos, doorRotY, wallIdx;
-    let valid = false;
-    for (let attempt = 0; attempt < 20 && !valid; attempt++) {
-        wallIdx = Math.floor(Math.random() * 4);
-        doorPos = new THREE.Vector3();
-        doorRotY = 0;
-        if (wallIdx === 0) { // back wall
-            doorPos.set((Math.random() - 0.5) * (roomWidth - doorWidth - 1.2), doorHeight/2, -roomLength/2 + 0.01);
-            doorRotY = 0;
-        } else if (wallIdx === 1) { // front wall
-            doorPos.set((Math.random() - 0.5) * (roomWidth - doorWidth - 1.2), doorHeight/2, roomLength/2 - 0.01);
-            doorRotY = Math.PI;
-        } else if (wallIdx === 2) { // left wall
-            doorPos.set(-roomWidth/2 + 0.01, doorHeight/2, (Math.random() - 0.5) * (roomLength - doorWidth - 1.2));
-            doorRotY = Math.PI / 2;
-        } else { // right wall
-            doorPos.set(roomWidth/2 - 0.01, doorHeight/2, (Math.random() - 0.5) * (roomLength - doorWidth - 1.2));
-            doorRotY = -Math.PI / 2;
-        }
-        // Check overlap with shelf
-        let overlap = false;
-        if (shelfPos && isOverlapXZ(doorPos, { width: doorWidth, depth: 0.2 }, shelfPos, shelfSize)) {
-            overlap = true;
-        }
-        // Check overlap with flowers
-        for (const flower of flowerModels) {
-            if (isOverlapXZ(doorPos, { width: doorWidth, depth: 0.2 }, flower.position, flower.size)) {
-                overlap = true;
-                break;
-            }
-        }
-        // Check overlap with telephone (only if right wall)
-        if (wallIdx === 3) {
-            if (isOverlapXZ(doorPos, { width: doorWidth, depth: 0.2 }, telephonePos, telephoneSize, 0.15)) {
-                overlap = true;
-            }
-        }
-        // Check overlap with bowl
-        if (bowlPos && isOverlapXZ(doorPos, { width: doorWidth, depth: 0.2 }, bowlPos, bowlSize)) {
-            overlap = true;
-        }
-        if (!overlap) valid = true;
-    }
-    // Remove previous door if present (for hot reload/dev)
-    const prevDoor = scene.getObjectByName('restock_door');
-    if (prevDoor) scene.remove(prevDoor);
-    // Create door mesh
-    const doorGeometry = new THREE.PlaneGeometry(doorWidth, doorHeight);
-    const doorMesh = new THREE.Mesh(doorGeometry, doorMaterial);
-    doorMesh.position.copy(doorPos);
-    doorMesh.rotation.y = doorRotY;
-    doorMesh.name = 'restock_door';
-    doorMesh.castShadow = false;
-    doorMesh.receiveShadow = true;
-    scene.add(doorMesh);
-    // Store door info for parcel spawning
-    scene.userData.restockDoor = { position: doorPos.clone(), rotationY: doorRotY };
-
-    // Set initial camera position
-    camera.position.set(0, 1.7, 0); // Eye height
-    camera.lookAt(0, 1.7, -1);
+    
+    // Connect the rooms (this handles wall skipping automatically)
+    roomManager.connectRooms('room1', 'room2', 'east', {
+        hasPassage: true,
+        passageWidth: 1.2,
+        passageHeight: 2.2,
+        createSharedWall: false
+    });
+    
+    // Set initial camera position - positioned to look at the boundary
+    camera.position.set(3, 1.7, 3); // Positioned to see both rooms
+    camera.lookAt(ROOM_DIMENSIONS.width/2, 1.0, 0);
 
     // Handle window resize
     window.addEventListener('resize', () => {
@@ -267,41 +279,8 @@ export function createScene() {
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // --- Parcel Spawning Helper ---
-    scene.userData.spawnParcelAtDoor = function() {
-        // Remove existing parcel if present
-        const existing = scene.getObjectByName('restock_parcel');
-        if (existing) scene.remove(existing);
-        const { position, rotationY } = scene.userData.restockDoor;
-        // Try both offset directions
-        const offset = 0.5;
-        const dir = new THREE.Vector3(Math.sin(rotationY), 0, Math.cos(rotationY));
-        let parcelPos1 = position.clone().add(dir.clone().multiplyScalar(-offset));
-        let parcelPos2 = position.clone().add(dir.clone().multiplyScalar(offset));
-        // Room bounds
-        const roomWidth = 6, roomLength = 8;
-        function inRoomBounds(pos) {
-            return (
-                pos.x > -roomWidth/2 && pos.x < roomWidth/2 &&
-                pos.z > -roomLength/2 && pos.z < roomLength/2
-            );
-        }
-        let chosenPos = null;
-        if (inRoomBounds(parcelPos1)) {
-            chosenPos = parcelPos1;
-        } else if (inRoomBounds(parcelPos2)) {
-            chosenPos = parcelPos2;
-        } else {
-            chosenPos = position.clone(); // fallback: at the door
-        }
-        // Create parcel using the Parcel class
-        const parcel = new Parcel(chosenPos);
-        scene.add(parcel.model);
-        if (scene.userData.interactionManager) {
-            scene.userData.interactionManager.collectObjects();
-        }
-        return parcel;
-    };
+    // Add the roomManager to the scene's userData for access elsewhere
+    scene.userData.roomManager = roomManager;
 
-    return { scene, camera, renderer };
+    return { scene, camera, renderer, roomManager };
 }

@@ -134,38 +134,137 @@ export function createWallMaterial(isLower, pattern, base, accent) {
     });
 }
 
-// Wall mesh with dado rail/trim
-export function createWall(width, height, isFrontOrBack, wallStyle, withFrames = false) {
+/**
+ * Creates a wall mesh, optionally with a passage (gap) in the middle.
+ * @param {number} width - Wall width
+ * @param {number} height - Wall height
+ * @param {boolean} isFrontOrBack - Orientation
+ * @param {object} wallStyle - Wall style
+ * @param {boolean} [withFrames=false] - Add frames
+ * @param {object} [passage] - Optional passage { width, height, x } (centered at x, in wall local space)
+ */
+export function createWall(width, height, isFrontOrBack, wallStyle, withFrames = false, passage = null) {
     const group = new THREE.Group();
     const lowerHeight = height * 0.35;
-    const lowerGeo = new THREE.PlaneGeometry(width, lowerHeight);
-    const lowerMat = createWallMaterial(true, wallStyle.pattern, wallStyle.base, wallStyle.accent);
-    const lower = new THREE.Mesh(lowerGeo, lowerMat);
-    lower.position.y = lowerHeight / 2;
-    lower.receiveShadow = true;
-    group.add(lower);
     const upperHeight = height - lowerHeight;
-    const upperGeo = new THREE.PlaneGeometry(width, upperHeight);
-    const upperMat = createWallMaterial(false, wallStyle.pattern, wallStyle.base, wallStyle.accent);
-    const upper = new THREE.Mesh(upperGeo, upperMat);
-    upper.position.y = lowerHeight + upperHeight / 2;
-    upper.receiveShadow = true;
-    group.add(upper);
-    // Dado rail (trim)
-    const trimGeo = new THREE.BoxGeometry(width, 0.04, 0.04);
-    const trimMat = new THREE.MeshStandardMaterial({ color: '#e2c290', roughness: 0.4 });
-    const trim = new THREE.Mesh(trimGeo, trimMat);
-    trim.position.y = lowerHeight + 0.02;
-    trim.renderOrder = 0;
-    group.add(trim);
-    // Optionally add frames
+    
+    // If no passage, create full wall as before
+    if (!passage) {
+        const lowerGeo = new THREE.PlaneGeometry(width, lowerHeight);
+        const lowerMat = createWallMaterial(true, wallStyle.pattern, wallStyle.base, wallStyle.accent);
+        const lower = new THREE.Mesh(lowerGeo, lowerMat);
+        lower.position.y = lowerHeight / 2;
+        lower.receiveShadow = true;
+        group.add(lower);
+        const upperGeo = new THREE.PlaneGeometry(width, upperHeight);
+        const upperMat = createWallMaterial(false, wallStyle.pattern, wallStyle.base, wallStyle.accent);
+        const upper = new THREE.Mesh(upperGeo, upperMat);
+        upper.position.y = lowerHeight + upperHeight / 2;
+        upper.receiveShadow = true;
+        group.add(upper);
+        // Dado rail (trim)
+        const trimGeo = new THREE.BoxGeometry(width, 0.04, 0.04);
+        const trimMat = new THREE.MeshStandardMaterial({ color: '#e2c290', roughness: 0.4 });
+        const trim = new THREE.Mesh(trimGeo, trimMat);
+        trim.position.y = lowerHeight + 0.02;
+        trim.renderOrder = 0;
+        group.add(trim);
+        if (withFrames) {
+            addFramesToWall(group, width, height);
+        }
+        return group;
+    }
+    // Passage logic
+    const { width: pWidth, height: pHeight, x: pX = 0 } = passage;
+    
+    // Calculate left and right segment widths
+    const leftW = width / 2 + pX - pWidth / 2;
+    const rightW = width / 2 - pX - pWidth / 2;
+    
+    // Lower part (below passage)
+    if (passage.height < lowerHeight) {
+        // Passage is above dado rail, so just split horizontally
+        // Left segment
+        if (leftW > 0.01) {
+            const geo = new THREE.PlaneGeometry(leftW, lowerHeight);
+            const mat = createWallMaterial(true, wallStyle.pattern, wallStyle.base, wallStyle.accent);
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.x = -width/2 + leftW/2;
+            mesh.position.y = lowerHeight/2;
+            mesh.receiveShadow = true;
+            group.add(mesh);
+        }
+        // Right segment
+        if (rightW > 0.01) {
+            const geo = new THREE.PlaneGeometry(rightW, lowerHeight);
+            const mat = createWallMaterial(true, wallStyle.pattern, wallStyle.base, wallStyle.accent);
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.x = width/2 - rightW/2;
+            mesh.position.y = lowerHeight/2;
+            mesh.receiveShadow = true;
+            group.add(mesh);
+        }
+    } else {
+        // Passage cuts into dado rail, so split vertically
+        // Left segment (full height)
+        if (leftW > 0.01) {
+            const geo = new THREE.PlaneGeometry(leftW, height);
+            const mat = createWallMaterial(false, wallStyle.pattern, wallStyle.base, wallStyle.accent);
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.x = -width/2 + leftW/2;
+            mesh.position.y = height/2;
+            mesh.receiveShadow = true;
+            group.add(mesh);
+        }
+        // Right segment (full height)
+        if (rightW > 0.01) {
+            const geo = new THREE.PlaneGeometry(rightW, height);
+            const mat = createWallMaterial(false, wallStyle.pattern, wallStyle.base, wallStyle.accent);
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.x = width/2 - rightW/2;
+            mesh.position.y = height/2;
+            mesh.receiveShadow = true;
+            group.add(mesh);
+        }
+    }
+    // Dado rail (trim) - left
+    const leftTrimW = pX - pWidth/2;
+    if (leftTrimW > 0.01) {
+        const trimGeo = new THREE.BoxGeometry(leftTrimW, 0.04, 0.04);
+        const trimMat = new THREE.MeshStandardMaterial({ color: '#e2c290', roughness: 0.4 });
+        const trim = new THREE.Mesh(trimGeo, trimMat);
+        trim.position.x = -width/2 + leftTrimW/2;
+        trim.position.y = lowerHeight + 0.02;
+        trim.renderOrder = 0;
+        group.add(trim);
+    }
+    // Dado rail (trim) - right
+    const rightTrimW = width - (pX + pWidth/2) - (width/2 - (pX + pWidth/2));
+    if (rightTrimW > 0.01) {
+        const trimGeo = new THREE.BoxGeometry(rightTrimW, 0.04, 0.04);
+        const trimMat = new THREE.MeshStandardMaterial({ color: '#e2c290', roughness: 0.4 });
+        const trim = new THREE.Mesh(trimGeo, trimMat);
+        trim.position.x = pX + pWidth/2 + rightTrimW/2 - width/2;
+        trim.position.y = lowerHeight + 0.02;
+        trim.renderOrder = 0;
+        group.add(trim);
+    }
+    // Optionally add frames (to left/right segments only)
     if (withFrames) {
-        addFramesToWall(group, width, height);
+        if (leftTrimW > 0.01) addFramesToWall(group, leftTrimW, height);
+        if (rightTrimW > 0.01) addFramesToWall(group, rightTrimW, height);
     }
     return group;
 }
 
-export function createRoom(wallStyle, renderer) {
+/**
+ * Creates a room group, optionally with passages in any wall.
+ * @param {object} wallStyle - Wall style
+ * @param {THREE.WebGLRenderer} renderer
+ * @param {object} [passages] - Optional passages for walls: { front, back, left, right }
+ *   Each value is either null or a passage object { width, height, x }
+ */
+export function createRoom(wallStyle, renderer, passages = {}) {
     const roomWidth = ROOM_DIMENSIONS.width;
     const roomLength = ROOM_DIMENSIONS.length;
     const roomHeight = ROOM_DIMENSIONS.height;
@@ -193,21 +292,21 @@ export function createRoom(wallStyle, renderer) {
     rug.name = 'rug';
     roomGroup.add(rug);
     // Walls (with frames)
-    const backWall = createWall(roomWidth, roomHeight, true, wallStyle, true);
+    const backWall = createWall(roomWidth, roomHeight, true, wallStyle, true, passages.back || null);
     backWall.position.z = -roomLength/2;
     backWall.position.y = 0;
     roomGroup.add(backWall);
-    const frontWall = createWall(roomWidth, roomHeight, true, wallStyle, true);
+    const frontWall = createWall(roomWidth, roomHeight, true, wallStyle, true, passages.front || null);
     frontWall.position.z = roomLength/2;
     frontWall.position.y = 0;
     frontWall.rotation.y = Math.PI;
     roomGroup.add(frontWall);
-    const leftWall = createWall(roomLength, roomHeight, false, wallStyle, true);
+    const leftWall = createWall(roomLength, roomHeight, false, wallStyle, true, passages.left || null);
     leftWall.position.x = -roomWidth/2;
     leftWall.position.y = 0;
     leftWall.rotation.y = Math.PI / 2;
     roomGroup.add(leftWall);
-    const rightWall = createWall(roomLength, roomHeight, false, wallStyle, true);
+    const rightWall = createWall(roomLength, roomHeight, false, wallStyle, true, passages.right || null);
     rightWall.position.x = roomWidth/2;
     rightWall.position.y = 0;
     rightWall.rotation.y = -Math.PI / 2;
