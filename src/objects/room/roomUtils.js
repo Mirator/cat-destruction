@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { addFramesToWall } from '../props/pictureFrames.js';
-import { ROOM_DIMENSIONS } from '../../config/RoomConfig.js';
+import { ROOM_DIMENSIONS, SHARED_WALL_THICKNESS } from '../../config/RoomConfig.js';
 
 // Parquet floor texture
 export function createParquetTexture(renderer) {
@@ -356,31 +356,131 @@ export function createRoom(wallStyle, renderer, passages = {}) {
     return roomGroup;
 }
 
-/**
- * Creates a shared wall mesh between two rooms, with a passage (hole) if specified.
- * @param {Object} options
- * @param {Object} options.dimensions - { width, height }
- * @param {THREE.Vector3} options.position - World position for the wall
- * @param {Object} [options.passage] - Optional passage { width, height, x }
- * @param {Object} options.style1 - Wall style for one side
- * @param {Object} options.style2 - Wall style for the other side
- * @param {number} [options.rotation=0] - Y rotation in radians
- * @param {boolean} [options.addDoorFrame=false] - Add a door frame (not implemented)
- * @returns {THREE.Group} Wall mesh group
- */
-export function createSharedWall({ dimensions, position, passage, style1, style2, rotation = 0, addDoorFrame = false }) {
-    // Create two wall meshes, one for each side, without trim
-    const wall1 = createWall(dimensions.width, dimensions.height, true, style1, false, passage, false);
-    const wall2 = createWall(dimensions.width, dimensions.height, true, style2, false, passage, false);
-    // Flip wall2 to face the opposite direction
-    wall2.rotation.y = Math.PI;
-    // Group them together
+export function getWallInteriorOffset(thickness) {
+    return thickness / 2;
+}
+
+export function createSharedWall({ dimensions, position, passage, style1, style2, rotation = 0, addDoorFrame = false, renderer = null }) {
+    const width = dimensions.width;
+    const height = dimensions.height;
+    const depth = SHARED_WALL_THICKNESS;
+    const mat1 = createWallMaterial(false, style1.pattern, style1.base, style1.accent);
+    const mat2 = createWallMaterial(false, style2.pattern, style2.base, style2.accent);
+    // Neutral material for sides/top/bottom (use base wall color)
+    const neutralMat = new THREE.MeshStandardMaterial({ color: style1.base, roughness: 0.6, metalness: 0.08 });
     const group = new THREE.Group();
-    group.add(wall1);
-    group.add(wall2);
+    const lowerHeight = height * 0.35;
+    const upperHeight = height - lowerHeight;
+    const gap = 0.002;
+    function makeWallSegment(segWidth, segHeight, segY, matFront, matBack) {
+        const geo = new THREE.BoxGeometry(segWidth, segHeight, depth);
+        // Use matFront for right/left faces so the thickness matches the room's wall style
+        const mats = [
+            matFront, // right
+            matFront, // left
+            neutralMat, // top
+            neutralMat, // bottom
+            matFront,   // front
+            matBack     // back
+        ];
+        const mesh = new THREE.Mesh(geo, mats);
+        mesh.position.y = segY;
+        return mesh;
+    }
+    function addTrimBox(group, segWidth, segX, segY) {
+        const trimGeo = new THREE.BoxGeometry(segWidth, 0.04,0.001);
+        const trimMat = new THREE.MeshStandardMaterial({ color: '#e2c290', roughness: 0.4 });
+        // Front face trim
+        const trimFront = new THREE.Mesh(trimGeo, trimMat);
+        trimFront.position.set(segX, segY, depth/2 + 0.005);
+        group.add(trimFront);
+        // Back face trim
+        const trimBack = new THREE.Mesh(trimGeo, trimMat);
+        trimBack.position.set(segX, segY, -depth/2 - 0.005);
+        group.add(trimBack);
+    }
+    if (!passage) {
+        // Solid wall: build from lower and upper segments
+        // Lower (dado)
+        const lowerFront = createWallMaterial(true, style1.pattern, style1.base, style1.accent);
+        const lowerBack = createWallMaterial(true, style2.pattern, style2.base, style2.accent);
+        const lowerMesh = makeWallSegment(width, lowerHeight, lowerHeight/2, lowerFront, lowerBack);
+        group.add(lowerMesh);
+        // Upper (with gap)
+        const upperFront = createWallMaterial(false, style1.pattern, style1.base, style1.accent);
+        const upperBack = createWallMaterial(false, style2.pattern, style2.base, style2.accent);
+        const upperMesh = makeWallSegment(width, upperHeight, lowerHeight + upperHeight/2 + gap, upperFront, upperBack);
+        group.add(upperMesh);
+        // Add trim
+        addTrimBox(group, width, 0, lowerHeight + 0.02);
+    } else {
+        // Wall with passage (doorway)
+        const pWidth = passage.width;
+        const pHeight = passage.height;
+        const pX = passage.x || 0;
+        // Left segment
+        const leftW = width / 2 + pX - pWidth / 2;
+        if (leftW > 0.01) {
+            // Lower
+            const lowerFront = createWallMaterial(true, style1.pattern, style1.base, style1.accent);
+            const lowerBack = createWallMaterial(true, style2.pattern, style2.base, style2.accent);
+            const lowerMesh = makeWallSegment(leftW, lowerHeight, lowerHeight/2, lowerFront, lowerBack);
+            lowerMesh.position.x = -width/2 + leftW/2;
+            group.add(lowerMesh);
+            // Upper (with gap)
+            const upperFront = createWallMaterial(false, style1.pattern, style1.base, style1.accent);
+            const upperBack = createWallMaterial(false, style2.pattern, style2.base, style2.accent);
+            const upperMesh = makeWallSegment(leftW, upperHeight, lowerHeight + upperHeight/2 + gap, upperFront, upperBack);
+            upperMesh.position.x = -width/2 + leftW/2;
+            group.add(upperMesh);
+            // Add trim for left segment
+            addTrimBox(group, leftW, -width/2 + leftW/2, lowerHeight + 0.02);
+        }
+        // Right segment
+        const rightW = width / 2 - pX - pWidth / 2;
+        if (rightW > 0.01) {
+            // Lower
+            const lowerFront = createWallMaterial(true, style1.pattern, style1.base, style1.accent);
+            const lowerBack = createWallMaterial(true, style2.pattern, style2.base, style2.accent);
+            const lowerMesh = makeWallSegment(rightW, lowerHeight, lowerHeight/2, lowerFront, lowerBack);
+            lowerMesh.position.x = width/2 - rightW/2;
+            group.add(lowerMesh);
+            // Upper (with gap)
+            const upperFront = createWallMaterial(false, style1.pattern, style1.base, style1.accent);
+            const upperBack = createWallMaterial(false, style2.pattern, style2.base, style2.accent);
+            const upperMesh = makeWallSegment(rightW, upperHeight, lowerHeight + upperHeight/2 + gap, upperFront, upperBack);
+            upperMesh.position.x = width/2 - rightW/2;
+            group.add(upperMesh);
+            // Add trim for right segment
+            addTrimBox(group, rightW, width/2 - rightW/2, lowerHeight + 0.02);
+        }
+        // Top segment (lintel)
+        const topH = height - pHeight;
+        if (topH > 0.01) {
+            // Lower (none, as passage is here)
+            // Upper
+            const upperFront = createWallMaterial(false, style1.pattern, style1.base, style1.accent);
+            const upperBack = createWallMaterial(false, style2.pattern, style2.base, style2.accent);
+            const upperMesh = makeWallSegment(pWidth, topH, pHeight + topH/2 + gap, upperFront, upperBack);
+            upperMesh.position.x = pX;
+            group.add(upperMesh);
+            // No trim for top segment
+        }
+        // Floor patch for the passage
+        if (renderer) {
+            const floorPatchGeo = new THREE.BoxGeometry(pWidth, 0.04, depth + 0.01);
+            const floorPatchMat = new THREE.MeshStandardMaterial({
+                map: createParquetTexture(renderer),
+                roughness: 0.7,
+                metalness: 0.15
+            });
+            const floorPatch = new THREE.Mesh(floorPatchGeo, floorPatchMat);
+            floorPatch.position.set(pX, 0.02, 0); // Slightly above y=0
+            group.add(floorPatch);
+        }
+    }
     group.position.copy(position);
     group.rotation.y = rotation;
     group.name = 'sharedWall';
-    // Optionally add door frame here in the future
     return group;
 } 

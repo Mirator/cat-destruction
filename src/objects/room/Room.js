@@ -1,16 +1,18 @@
 import * as THREE from 'three';
 import { createFurniture } from '../furniture/furniture.js';
 import { WallTelephone } from '../props/WallTelephone.js';
-import { createWall, createParquetTexture, createCeilingTexture } from './roomUtils.js';
-import { ROOM_DIMENSIONS, WALL_PALETTES, WALL_PATTERNS } from '../../config/RoomConfig.js';
+import { createWall, createParquetTexture, createCeilingTexture, getWallInteriorOffset } from './roomUtils.js';
+import { ROOM_DIMENSIONS, WALL_PALETTES, WALL_PATTERNS, SHARED_WALL_THICKNESS } from '../../config/RoomConfig.js';
 import { FLOWER_CONFIG } from '../../config/GameConfig.js';
 import { FlowerProp } from '../props/FlowerProp.js';
 
 export class Room {
+    // Track unique objects globally
+    static uniqueObjectsCreated = new Set();
     /**
      * @param {Object} options
      * @param {THREE.Vector3} [options.position] - Position of the room
-     * @param {Object} [options.config] - Room configuration (wallStyle, lighting, passages, skipWalls, etc.)
+     * @param {Object} [options.config] - Room configuration (wallProps, furniture, decorative, etc.)
      * @param {THREE.WebGLRenderer} [options.renderer] - Renderer for texture generation
      * @param {string} [options.id] - Unique identifier for the room
      */
@@ -124,7 +126,7 @@ export class Room {
 
     /**
      * Generates the room structure and contents.
-     * Uses config.wallStyle, config.passages, and config.skipWalls if provided.
+     * Uses config.wallProps, config.furniture, config.decorative if provided.
      */
     generateRoom() {
         const roomWidth = ROOM_DIMENSIONS.width;
@@ -156,14 +158,16 @@ export class Room {
         roomGroup.add(floor);
         
         // Create rug
-        const rugGeometry = new THREE.CircleGeometry(1.2, 32);
-        const rugMaterial = new THREE.MeshStandardMaterial({ color: 0xf7cac9, roughness: 0.8 });
-        const rug = new THREE.Mesh(rugGeometry, rugMaterial);
-        rug.position.set(0, 0.01, 0);
-        rug.rotation.x = -Math.PI / 2;
-        rug.receiveShadow = true;
-        rug.name = 'rug';
-        roomGroup.add(rug);
+        if (this.hasDecorative('rug')) {
+            const rugGeometry = new THREE.CircleGeometry(1.2, 32);
+            const rugMaterial = new THREE.MeshStandardMaterial({ color: 0xf7cac9, roughness: 0.8 });
+            const rug = new THREE.Mesh(rugGeometry, rugMaterial);
+            rug.position.set(0, 0.01, 0);
+            rug.rotation.x = -Math.PI / 2;
+            rug.receiveShadow = true;
+            rug.name = 'rug';
+            roomGroup.add(rug);
+        }
         
         // Create ceiling
         const ceilingTexture = createCeilingTexture(this.renderer);
@@ -300,59 +304,112 @@ export class Room {
     }
     
     /**
-     * Add furniture to the room
+     * Check if a decorative item is in the config
+     */
+    hasDecorative(type) {
+        return this.config.decorative && this.config.decorative.some(obj => obj.type === type);
+    }
+    
+    /**
+     * Add furniture to the room based on config
      */
     addFurniture(roomWidth, roomLength) {
-        const furniture = createFurniture(roomWidth, roomLength);
+        if (!this.config.furniture) return;
         const furnitureGroup = new THREE.Group();
         furnitureGroup.name = 'furniture';
-        furniture.forEach(item => furnitureGroup.add(item));
+        for (const item of this.config.furniture) {
+            // Only add unique objects if not already created
+            if (item.unique && Room.uniqueObjectsCreated.has(item.type)) continue;
+            let mesh = null;
+            if (item.type === 'table') {
+                mesh = createFurniture(roomWidth, roomLength).find(obj => obj.name === 'table');
+            } else if (item.type === 'chair') {
+                mesh = createFurniture(roomWidth, roomLength).find(obj => obj.name === 'chair');
+            } else if (item.type === 'bed') {
+                mesh = createFurniture(roomWidth, roomLength).find(obj => obj.name === 'bed');
+            }
+            if (mesh) {
+                if (item.position) mesh.position.copy(new THREE.Vector3(item.position.x, item.position.y, item.position.z));
+                furnitureGroup.add(mesh);
+                if (item.unique) Room.uniqueObjectsCreated.add(item.type);
+            }
+        }
         this.group.add(furnitureGroup);
     }
     
     /**
-     * Add wall-mounted props
+     * Add wall-mounted props based on config
      */
     addWallProps(roomWidth, roomLength) {
-        // Wall Telephone
-        const phonePosition = new THREE.Vector3(roomWidth/2 - 0.04, 1.5, roomLength/2 - 1.0);
-        const wallPhone = new WallTelephone(phonePosition);
-        wallPhone.model.userData.telephoneInstance = wallPhone;
-        wallPhone.model.name = 'wallPhone';
-        this.group.add(wallPhone.model);
+        if (!this.config.wallProps) return;
+        for (const item of this.config.wallProps) {
+            if (item.unique && Room.uniqueObjectsCreated.has(item.type)) continue;
+            if (item.type === 'telephone') {
+                // Default position is on the right wall (east), adjust for wall thickness if needed
+                let phonePosition = item.position ? new THREE.Vector3(item.position.x, item.position.y, item.position.z) : new THREE.Vector3(roomWidth/2 - 0.04, 1.5, roomLength/2 - 1.0);
+                // If the phone is on a shared (thick) wall, offset it inward
+                if (Math.abs(phonePosition.x - roomWidth/2) < 0.2) {
+                    phonePosition.x -= getWallInteriorOffset(SHARED_WALL_THICKNESS);
+                } else if (Math.abs(phonePosition.x + roomWidth/2) < 0.2) {
+                    phonePosition.x += getWallInteriorOffset(SHARED_WALL_THICKNESS);
+                } else if (Math.abs(phonePosition.z - roomLength/2) < 0.2) {
+                    phonePosition.z -= getWallInteriorOffset(SHARED_WALL_THICKNESS);
+                } else if (Math.abs(phonePosition.z + roomLength/2) < 0.2) {
+                    phonePosition.z += getWallInteriorOffset(SHARED_WALL_THICKNESS);
+                }
+                const wallPhone = new WallTelephone(phonePosition);
+                wallPhone.model.userData.telephoneInstance = wallPhone;
+                wallPhone.model.name = 'wallPhone';
+                this.group.add(wallPhone.model);
+                if (item.unique) Room.uniqueObjectsCreated.add(item.type);
+            } else if (item.type === 'door') {
+                // TODO: Add door creation logic here, using item.position or default
+                if (item.unique) Room.uniqueObjectsCreated.add(item.type);
+            } else if (item.type === 'shelf') {
+                // TODO: Add shelf creation logic here, using item.position or default
+                if (item.unique) Room.uniqueObjectsCreated.add(item.type);
+            } else if (item.type === 'pictureFrame') {
+                // TODO: Add picture frame creation logic here, using item.position or default
+            }
+        }
     }
     
     /**
-     * Add flowers and other decoration props
+     * Add flowers as destroyable props based on config.flowers (not decorative)
      */
     addFlowers(roomWidth, roomLength) {
+        if (!this.config.flowers) return;
+        const { min, max } = this.config.flowers;
+        const count = Math.floor(Math.random() * (max - min + 1)) + min;
         // Find the table position for placement calculations
         const furnitureGroup = this.group.getObjectByName('furniture');
         const table = furnitureGroup ? furnitureGroup.children.find(obj => obj.name === 'table') : null;
         const tablePos = table ? table.position : new THREE.Vector3(0, 0, 0);
         const tableSize = { width: 1.4, depth: 1.0 };
-        
         function isTooCloseXZ(posA, sizeA, posB, sizeB, minGap = 0.25) {
             return (
                 Math.abs(posA.x - posB.x) < (sizeA.width / 2 + sizeB.width / 2 + minGap) &&
                 Math.abs(posA.z - posB.z) < (sizeA.depth / 2 + sizeB.depth / 2 + minGap)
             );
         }
-        
         function clampToRoom(x, z, margin = 0.3) {
             return {
                 x: Math.max(-roomWidth/2 + margin, Math.min(roomWidth/2 - margin, x)),
                 z: Math.max(-roomLength/2 + margin, Math.min(roomLength/2 - margin, z))
             };
         }
-        
         // Create a group for flowers
         const flowerGroup = new THREE.Group();
         flowerGroup.name = 'flowers';
-        
-        FLOWER_CONFIG.variants.forEach(variant => {
-            let pos = { ...variant.position };
+        for (let i = 0; i < count; i++) {
+            // Generate random position
+            let pos = {
+                x: (Math.random() - 0.5) * (roomWidth - 1.0),
+                y: 0.01,
+                z: (Math.random() - 0.5) * (roomLength - 1.0)
+            };
             const flowerSize = { width: 0.18, depth: 0.18 };
+            // Avoid placing too close to the table
             if (isTooCloseXZ(pos, flowerSize, tablePos, tableSize)) {
                 if (pos.x < tablePos.x) pos.x -= (tableSize.width/2 + flowerSize.width/2 + 0.3);
                 else pos.x += (tableSize.width/2 + flowerSize.width/2 + 0.3);
@@ -369,11 +426,10 @@ export class Room {
             }
             const flower = new FlowerProp(
                 new THREE.Vector3(pos.x, pos.y, pos.z),
-                { flowerColor: variant.flowerColor }
+                { flowerColor: 0xffc0cb }
             );
             flowerGroup.add(flower.model);
-        });
-        
+        }
         this.group.add(flowerGroup);
     }
 

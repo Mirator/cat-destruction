@@ -14,4 +14,35 @@ export const WALL_PALETTES = [
     { base: '#f5e6e8', accent: '#e3b7a0' }, // pinkish
 ];
 
-export const WALL_PATTERNS = ['stripes', 'polka', 'floral', 'plain']; 
+export const WALL_PATTERNS = ['stripes', 'polka', 'floral', 'plain'];
+
+export const SHARED_WALL_THICKNESS = 0.2;
+
+export const ROOM_CONFIGS = {
+  mainRoom: {
+    wallProps: [
+      { type: 'telephone', unique: true },
+      { type: 'door', unique: true },
+      { type: 'shelf', unique: true },
+      { type: 'pictureFrame' }
+    ],
+    furniture: [
+      { type: 'table' },
+      { type: 'chair' }
+    ],
+    flowers: { min: 2, max: 4 },
+    decorative: [
+      // no flower here
+    ]
+  },
+  sleepingRoom: {
+    wallProps: [
+      { type: 'pictureFrame' }
+    ],
+    furniture: [
+      { type: 'bed' }
+    ],
+    decorative: [
+      { type: 'rug' }]
+  }
+}; 

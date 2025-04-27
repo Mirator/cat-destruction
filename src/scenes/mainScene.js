@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Room } from '../objects/room/Room.js';
 import { Food } from '../objects/food/food.js';
 import { createParquetTexture, createDynamicWallTexture, createCeilingTexture, createWallMaterial, createWall, createRoom, createSharedWall } from '../objects/room/roomUtils.js';
-import { ROOM_DIMENSIONS } from '../config/RoomConfig.js';
+import { ROOM_DIMENSIONS, ROOM_CONFIGS, SHARED_WALL_THICKNESS } from '../config/RoomConfig.js';
 
 /**
  * Manages rooms, connections between rooms, and shared walls
@@ -136,7 +136,8 @@ class RoomManager {
             style1: room1.wallStyle,
             style2: room2.wallStyle,
             rotation,
-            addDoorFrame: options.addDoorFrame
+            addDoorFrame: options.addDoorFrame,
+            renderer: this.renderer
         });
         
         // Add to scene and track
@@ -252,12 +253,14 @@ export function createScene() {
     // Create two adjacent rooms
     const room1 = roomManager.createRoom({
         id: 'room1',
-        position: new THREE.Vector3(0, 0, 0)
+        position: new THREE.Vector3(0, 0, 0),
+        config: ROOM_CONFIGS.mainRoom
     });
     
     const room2 = roomManager.createRoom({
         id: 'room2',
-        position: new THREE.Vector3(ROOM_DIMENSIONS.width, 0, 0)
+        position: new THREE.Vector3(ROOM_DIMENSIONS.width, 0, 0),
+        config: ROOM_CONFIGS.sleepingRoom
     });
     
     // Connect the rooms (this handles wall skipping automatically)
