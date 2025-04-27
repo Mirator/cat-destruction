@@ -409,14 +409,21 @@ export function createFurniture(roomWidth, roomLength) {
     let attempts = 0;
     const maxAttempts = 20;
     const bowlSize = { width: 0.4, depth: 0.4 }; // Approximate bowl size (adjust if needed)
+    const shelfBackWallZ = -roomLength/2 + 0.15;
+    const shelfWidth = FURNITURE_DIMENSIONS.shelf.width;
+    const shelfNoGoZone = shelfWidth / 2 + 0.25; // 0.25m margin
+    let isBackWall, tooCloseToShelf;
     do {
         bowlPosition = Bowl.generateRandomPosition(roomWidth, roomLength);
         attempts++;
+        // If bowl is on the back wall (z close to shelfBackWallZ), ensure x is far enough from shelf
+        isBackWall = Math.abs(bowlPosition.z - shelfBackWallZ) < 0.2;
+        tooCloseToShelf = isBackWall && Math.abs(bowlPosition.x) < shelfNoGoZone;
     } while (
-        placedObjects.some(obj => isOverlapping(
+        (placedObjects.some(obj => isOverlapping(
             { x: bowlPosition.x, z: bowlPosition.z }, bowlSize,
             obj.pos, obj.size
-        )) && attempts < maxAttempts
+        )) || tooCloseToShelf) && attempts < maxAttempts
     );
     const bowl = new Bowl(bowlPosition);
     furniture.push(bowl.model);
