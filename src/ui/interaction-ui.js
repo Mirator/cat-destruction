@@ -5,6 +5,7 @@ export class InteractionUI {
         this.createPromptElement();
         this.createHelpTipElement();
         this.createAttentionElement();
+        this.helpTipPriority = false;
     }
 
     createPromptElement() {
@@ -101,13 +102,29 @@ export class InteractionUI {
         }
     }
 
-    showHelpTip(text) {
+    showHelpTip(text, priority = false) {
         this.helpTipElement.textContent = text;
         this.helpTipElement.style.display = 'block';
+        if (this.helpTipTimeout) clearTimeout(this.helpTipTimeout);
+        if (priority) {
+            this.helpTipPriority = true;
+            this.helpTipTimeout = setTimeout(() => {
+                this.clearHelpTipPriority();
+            }, 3000);
+        } else {
+            this.helpTipPriority = false;
+        }
     }
 
     hideHelpTip() {
+        if (this.helpTipPriority) return;
         this.helpTipElement.style.display = 'none';
+        if (this.helpTipTimeout) clearTimeout(this.helpTipTimeout);
+    }
+
+    clearHelpTipPriority() {
+        this.helpTipPriority = false;
+        this.hideHelpTip();
     }
 
     showAttention(text, duration = 2500) {

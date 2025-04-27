@@ -353,11 +353,25 @@ export class InteractionManager {
             if (this.carriedFood) {
                 // Remove dropping food: only allow placing in bowl
                 if (this.tryPlaceInBowl()) {
+                    console.log('[DEBUG] Placed food in bowl. About to consume:', this.carriedFood);
+                    // Check if this was the last can of its type (after placing in bowl)
+                    const type = this.carriedFood.type;
                     this.carriedFood.consume();
                     this.carriedFood = null;
                     // Clear all bowl highlights
                     this.bowls.forEach(bowl => bowl.setHighlight(false));
-                    this.ui.hideHelpTip(); // Hide help tip after filling bowl
+                    // Defer the check for remaining cans to ensure state is updated
+                    setTimeout(() => {
+                        const remainingOfType = this.foodItems.filter(f => !f.isConsumed && !f.isPickedUp && !f.inBowl && f.type === type);
+                        console.log('[DEBUG] Checking remaining cans of type', type, 'remaining:', remainingOfType.length, remainingOfType);
+                        if (remainingOfType.length === 0) {
+                            console.log('[DEBUG] Out of cans of type', type, '- showing help tip');
+                            this.ui.showHelpTip('Out of ' + (type === 'FISH' ? 'Fish' : 'Chicken') + ' cans! Use the telephone to restock.', true);
+                        } else {
+                            console.log('[DEBUG] Still have cans of type', type, '- hiding help tip');
+                            this.ui.hideHelpTip(); // Hide help tip after filling bowl
+                        }
+                    }, 0);
                 }
             } else if (this.carriedParcel) {
                 // --- RESTOCK SHELF ---
@@ -402,10 +416,14 @@ export class InteractionManager {
 
     handlePickup() {
         const nearestFood = Food.findBestTargetFood(this.player.camera, this.foodItems);
-        
         if (nearestFood && !nearestFood.isConsumed && !nearestFood.isPickedUp) {
             if (nearestFood.pickup()) {
                 this.carriedFood = nearestFood;
+                // Check if this was the last can of its type
+                const remainingOfType = this.foodItems.filter(f => !f.isConsumed && !f.isPickedUp && f.type === nearestFood.type);
+                if (remainingOfType.length === 0) {
+                    this.ui.showHelpTip('Out of ' + (nearestFood.type === 'FISH' ? 'Fish' : 'Chicken') + ' cans! Use the telephone to restock.');
+                }
             }
         }
     }

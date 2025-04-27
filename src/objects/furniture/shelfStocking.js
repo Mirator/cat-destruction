@@ -50,6 +50,39 @@ export function stockShelf(shelfGroup, shelfPositions, shelfWidth) {
         const j = Math.floor(Math.random() * (i + 1));
         [available[i], available[j]] = [available[j], available[i]];
     }
+    // Use a property on the shelfGroup to track first restock
+    if (!shelfGroup.userData.hasRestockedOnce) {
+        shelfGroup.userData.hasRestockedOnce = true;
+        const types = ['FISH', 'CHICKEN'];
+        for (let i = 0; i < types.length && i < available.length; i++) {
+            const idx = available[i];
+            const comp = compartments[idx];
+            const basePos = shelfPositions[comp.shelfIdx];
+            let x;
+            if (comp.left) {
+                const minX = -shelfWidth / 2 + 0.05 / 2 + FOOD_CONFIG.types.FISH.model.width / 2 + 0.05;
+                const maxX = -0.02 / 2 - FOOD_CONFIG.types.FISH.model.width / 2 - 0.05;
+                x = minX + Math.random() * (maxX - minX);
+            } else {
+                const minX = 0.02 / 2 + FOOD_CONFIG.types.FISH.model.width / 2 + 0.05;
+                const maxX = shelfWidth / 2 - 0.05 / 2 - FOOD_CONFIG.types.FISH.model.width / 2 - 0.05;
+                x = minX + Math.random() * (maxX - minX);
+            }
+            const shelfDepth = 0.3;
+            const canRadius = FOOD_CONFIG.types.FISH.model.width / 2;
+            const margin = 0.05;
+            const zRange = shelfDepth / 2 - canRadius - margin;
+            const z = basePos.z - zRange + Math.random() * (2 * zRange);
+            const pos = { x, y: basePos.y, z };
+            const food = new Food(types[i], new THREE.Vector3(pos.x, pos.y, pos.z));
+            food.model.rotation.set(0, 0, 0);
+            shelfGroup.userData.foodItems.push(food);
+            shelfGroup.add(food.model);
+            compartmentCounts[idx]++;
+        }
+        return;
+    }
+    // Normal restock logic
     const numToAdd = Math.min(Math.floor(Math.random() * 2) + 4, available.length);
     const chosen = available.slice(0, numToAdd);
     // Prepare half fish, half chicken

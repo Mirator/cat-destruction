@@ -118,7 +118,7 @@ export class HungerBar {
         return 'Very Hungry!';
     }
 
-    update(hunger) {
+    update(hunger, foodPreference = null) {
         // Ensure hunger is within bounds
         const clampedHunger = Math.max(0, Math.min(100, hunger));
         
@@ -131,5 +131,14 @@ export class HungerBar {
         // Update color and text based on hunger level
         this.fillBar.style.backgroundColor = this.getStatusColor(clampedHunger);
         this.label.textContent = this.getStatusText(clampedHunger);
+
+        // Show food preference if set
+        if (foodPreference === 'FISH') {
+            this.barLabel.textContent = 'Wants: Fish';
+        } else if (foodPreference === 'CHICKEN') {
+            this.barLabel.textContent = 'Wants: Chicken';
+        } else {
+            this.barLabel.textContent = 'Hunger Level';
+        }
     }
 }

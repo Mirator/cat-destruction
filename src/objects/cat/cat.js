@@ -546,10 +546,10 @@ export class Cat {
     }
 
     eat(bowl) {
+        console.log('[DEBUG] eat() called. isEating:', this.state.food.isEating, 'bowl.hasFood():', bowl.hasFood(), 'bowl.fill:', bowl.fill, 'bowl.currentFood:', bowl.currentFood);
         if (!this.state.food.isEating && bowl.hasFood()) {
             this.state.food.isEating = true;
             this.state.setActivity(ACTIVITY_TYPES.EATING);
-
             // Move cat to 10cm in front of bowl and face it
             const direction = bowl.position.clone().sub(this.position);
             direction.y = 0;
@@ -560,11 +560,10 @@ export class Cat {
             this.updatePosition();
             this.state.movement.facingAngle = Math.atan2(direction.x, direction.z);
             this.model.rotation.y = this.state.movement.facingAngle;
-
             // Eat as long as there is food in the bowl
             const cat = this;
             const food = bowl.currentFood;
-            const totalTime = 10000; // 10 seconds to eat full bowl
+            const totalTime = 8000; // 8 seconds to eat full bowl (20% faster)
             const intervalMs = 50;
             const steps = totalTime / intervalMs;
             const fillPerStep = 1 / steps;
@@ -577,15 +576,24 @@ export class Cat {
                 hungerMultiplier = 0.8; // 20% less hunger reduction
                 angerMultiplier = 0.25; // 75% less anger reduction
             }
+            // If the cat is eating what she wanted, clear the preference immediately
+            if (wantedType && foodType === wantedType) {
+                cat.state.setFoodPreference(null);
+            }
+            console.log('[DEBUG] Starting eat interval');
             const interval = setInterval(() => {
+                console.log('[DEBUG] eat interval tick. isEating:', cat.state.food.isEating, 'bowl.hasFood():', bowl.hasFood(), 'bowl.fill:', bowl.fill, 'bowl.currentFood:', bowl.currentFood);
                 if (!cat.state.food.isEating || !bowl.hasFood()) {
                     clearInterval(interval);
+                    console.log('[DEBUG] Clearing eat interval. isEating:', cat.state.food.isEating, 'bowl.hasFood():', bowl.hasFood(), 'bowl.fill:', bowl.fill, 'bowl.currentFood:', bowl.currentFood);
                     cat.state.food.isEating = false;
                     cat.state.food.targetBowl = null;
-                    if (bowl.fill <= 0) {
+                    if (bowl.fill <= 1e-4) {
                         if (food) food.isConsumed = true;
                         bowl.currentFood = null;
                         bowl.targetFill = 0;
+                        bowl.setFoodFill(0);
+                        if (bowl.foodContent) bowl.foodContent.visible = false;
                     }
                     return;
                 }

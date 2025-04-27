@@ -118,6 +118,7 @@ export class Bowl extends Highlightable {
     addFood(food) {
         if (this.currentFood || !food) return false;
         food.model.visible = false;
+        food.inBowl = true;
         
         // Update the food content material
         const foodColor = FOOD_CONFIG.types[food.type].color.content;
@@ -147,6 +148,7 @@ export class Bowl extends Highlightable {
         if (!this.currentFood) return null;
         this.foodContent.material.visible = false;
         const food = this.currentFood;
+        food.inBowl = false;
         this.currentFood = null;
         this.targetFill = 0;
         
@@ -158,7 +160,7 @@ export class Bowl extends Highlightable {
     }
 
     hasFood() {
-        return this.currentFood !== null && this.fill > 0;
+        return this.currentFood !== null && this.fill > 1e-4;
     }
 
     canAcceptFood() {

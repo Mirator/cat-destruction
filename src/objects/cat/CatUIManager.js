@@ -9,7 +9,7 @@ export class CatUIManager {
     }
 
     update() {
-        this.hungerBar.update(this.state.hunger);
+        this.hungerBar.update(this.state.hunger, this.state.foodPreference);
         this.statusBar.updateAnger(this.state.anger);
         this.statusBar.updateActivity(this.state.activity);
     }

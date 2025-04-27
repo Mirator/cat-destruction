@@ -49,12 +49,8 @@ export class CatBehavior {
                 this.state.setFoodPreference(pref);
                 getAttentionUI().showAttention(`Cat wants ${pref === 'FISH' ? 'Fish' : 'Chicken'}!`, 3000);
             }
-        } else {
-            // Reset preference if food is available
-            if (this.state.food.foodPreference) {
-                this.state.setFoodPreference(null);
-            }
         }
+        // Do NOT reset preference just because food is available
     }
 
     handleMischief(deltaTime) {
