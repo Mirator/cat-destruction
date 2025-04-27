@@ -21,17 +21,18 @@ export class PlayerStatusBar {
 
         // Survival time display
         this.survivalTimeLabel = document.createElement('div');
-        this.survivalTimeLabel.style.color = '#ffe6a0';
-        this.survivalTimeLabel.style.fontSize = '15px';
+        this.survivalTimeLabel.style.color = '#ffe066';
+        this.survivalTimeLabel.style.fontSize = '1.1em';
         this.survivalTimeLabel.style.fontWeight = 'bold';
         this.survivalTimeLabel.style.marginBottom = '2px';
+        this.survivalTimeLabel.style.letterSpacing = '0.5px';
         this.survivalTimeLabel.textContent = 'Survived: 0:00';
         this.container.appendChild(this.survivalTimeLabel);
 
         // Best time display
         this.bestTimeLabel = document.createElement('div');
-        this.bestTimeLabel.style.color = '#ffd700';
-        this.bestTimeLabel.style.fontSize = '13px';
+        this.bestTimeLabel.style.color = '#fff';
+        this.bestTimeLabel.style.fontSize = '1em';
         this.bestTimeLabel.style.fontWeight = 'bold';
         this.bestTimeLabel.style.marginBottom = '8px';
         this.bestTimeLabel.textContent = 'Best: 0:00';
