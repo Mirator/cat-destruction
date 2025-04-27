@@ -12,6 +12,9 @@ import { ROOM_DIMENSIONS } from './src/config/RoomConfig.js';
 import { ScoreManager } from './src/state/ScoreManager.js';
 import audioManager from './src/audio/AudioManager.js';
 
+// Make audioManager globally accessible
+window.audioManager = audioManager;
+
 // Initialize the scene
 const { scene, camera, renderer } = createScene();
 document.body.appendChild(renderer.domElement);
@@ -83,6 +86,8 @@ startScreen.show();
 
 // Load meow sound asset
 await audioManager.loadSound('cat_meow', 'assets/sounds/Mnau.wav');
+// Load door sound asset
+await audioManager.loadSound('door', 'assets/sounds/doors.wav');
 
 // Animation loop
 function animate() {

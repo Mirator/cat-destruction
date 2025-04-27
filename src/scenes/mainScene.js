@@ -365,6 +365,16 @@ export function createScene() {
         // Ensure interaction manager knows about the new parcel
         if (scene.userData.interactionManager) {
             scene.userData.interactionManager.collectObjects();
+            // Play door sound and show helper tip
+            if (window.audioManager) {
+                window.audioManager.play('door');
+            } else {
+                try {
+                    // Try import if not global
+                    import('../audio/AudioManager.js').then(mod => mod.default.play('door'));
+                } catch (e) {}
+            }
+            scene.userData.interactionManager.ui.showHelpTip('Check doors for parcel!', true);
         }
     };
 
