@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createFurniture } from '../furniture/furniture.js';
+import { createFurniture, createShelvingUnit, FURNITURE_DIMENSIONS } from '../furniture/furniture.js';
 import { WallTelephone } from '../props/WallTelephone.js';
 import { createWall, createParquetTexture, createCeilingTexture, getWallInteriorOffset } from './roomUtils.js';
 import { ROOM_DIMENSIONS, WALL_PALETTES, WALL_PATTERNS, SHARED_WALL_THICKNESS } from '../../config/RoomConfig.js';
@@ -426,7 +426,48 @@ export class Room {
                 }
                 if (item.unique) Room.uniqueObjectsCreated.add(item.type);
             } else if (item.type === 'shelf') {
-                // TODO: Add shelf creation logic here, using item.position or default
+                // Place shelf on south wall (back wall), random position, avoid overlap with other wall props
+                const dims = FURNITURE_DIMENSIONS.shelf;
+                const margin = 0.05;
+                const wallLength = ROOM_DIMENSIONS.width;
+                const wallY = 0;
+                const wallZ = -ROOM_DIMENSIONS.length/2 + dims.depth/2 + margin;
+                // Find all wall props already placed on the south wall (excluding shelf)
+                const placedWallProps = (this.config.wallProps || []).filter(p => p !== item && (!p.wall || p.wall === 'south') && p.position);
+                // Try up to 10 times to find a non-overlapping position
+                let shelfPosition = null;
+                for (let attempt = 0; attempt < 10; attempt++) {
+                    // Random position along wall (excluding margins)
+                    const halfLen = wallLength/2 - dims.width/2 - margin;
+                    const x = Math.random() * 2 * halfLen - halfLen;
+                    const pos = new THREE.Vector3(x, wallY, wallZ);
+                    // Check for overlap with other wall props
+                    let overlaps = false;
+                    for (const prop of placedWallProps) {
+                        const other = prop.position;
+                        if (Math.abs(pos.x - other.x) < dims.width + 0.2) {
+                            overlaps = true;
+                            break;
+                        }
+                    }
+                    if (!overlaps) {
+                        shelfPosition = pos;
+                        break;
+                    }
+                }
+                if (!shelfPosition) {
+                    // Fallback: just use wall center
+                    shelfPosition = new THREE.Vector3(0, wallY, wallZ);
+                }
+                const shelf = createShelvingUnit();
+                shelf.position.copy(shelfPosition);
+                // Store shelf positions and width for restocking
+                shelf.userData.shelfPositions = [];
+                for (let i = 0; i < dims.shelfCount; i++) {
+                    shelf.userData.shelfPositions.push({ x: 0, y: (i * (dims.height / dims.shelfCount)) + 2.5 * dims.shelfThickness, z: 0 });
+                }
+                shelf.userData.shelfWidth = dims.width;
+                this.group.add(shelf);
                 if (item.unique) Room.uniqueObjectsCreated.add(item.type);
             } else if (item.type === 'pictureFrame') {
                 // TODO: Add picture frame creation logic here, using item.position or default

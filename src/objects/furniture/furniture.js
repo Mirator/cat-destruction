@@ -11,7 +11,7 @@ const WOOD_MATERIAL_CONFIG = {
 };
 
 // Furniture dimensions
-const FURNITURE_DIMENSIONS = {
+export const FURNITURE_DIMENSIONS = {
     table: {
         width: 1.4,
         height: 0.7,
@@ -129,7 +129,7 @@ function createChair() {
     return chairGroup;
 }
 
-function createShelvingUnit() {
+export function createShelvingUnit() {
     const shelfGroup = new THREE.Group();
     shelfGroup.name = 'shelf';
     const dims = FURNITURE_DIMENSIONS.shelf;
