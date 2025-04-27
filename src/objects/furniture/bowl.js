@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FOOD_TYPES } from '../food/food.js';
+import { FOOD_CONFIG } from '../../config/GameConfig.js';
 import { BOWL_CONFIG } from '../../config/GameConfig.js';
 import { Highlightable } from '../props/Highlightable.js';
 
@@ -96,7 +96,7 @@ export class Bowl extends Highlightable {
             32
         );
         const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
-            color: 0xCD853F, // Default food color
+            color: 0x6EC6FF, // Default food color (FISH)
             roughness: 0.8,
             metalness: 0.0,
             visible: true
@@ -120,7 +120,7 @@ export class Bowl extends Highlightable {
         food.model.visible = false;
         
         // Update the food content material
-        const foodColor = FOOD_TYPES[food.type].color.content;
+        const foodColor = FOOD_CONFIG.types[food.type].color.content;
         this.foodContent.material = new THREE.MeshStandardMaterial({
             color: foodColor,
             roughness: 0.8,

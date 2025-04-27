@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { Food, FOOD_TYPES } from '../food/food.js';
+import { FOOD_CONFIG } from '../../config/GameConfig.js';
+import { Food } from '../food/food.js';
 
 // Adds 4-5 food items to the shelf, distributed across compartments
 export function stockShelf(shelfGroup, shelfPositions, shelfWidth) {
@@ -54,7 +55,7 @@ export function stockShelf(shelfGroup, shelfPositions, shelfWidth) {
     // Place new cans
     const sideThickness = 0.05; // from furniture.js
     const partitionWidth = 0.02; // from divider geometry
-    const canRadius = FOOD_TYPES.BASIC.model.width / 2;
+    const canRadius = FOOD_CONFIG.types.FISH.model.width / 2;
     const margin = 0.05; // 5cm margin from edges/partition
     const shelfDepth = 0.3;
     const leftInnerEdge = -shelfWidth / 2 + sideThickness / 2;
@@ -83,7 +84,7 @@ export function stockShelf(shelfGroup, shelfPositions, shelfWidth) {
         const pos = { x, y: basePos.y, z };
         // Debug: log can position
         // console.log(`[ShelfStocking] Placing can: shelfIdx=${comp.shelfIdx}, left=${comp.left}, pos=`, pos);
-        const type = Math.random() < 0.7 ? 'BASIC' : 'PREMIUM';
+        const type = Math.random() < 0.7 ? 'FISH' : 'CHICKEN';
         const food = new Food(type, new THREE.Vector3(pos.x, pos.y, pos.z));
         food.model.rotation.set(0, 0, 0);
         shelfGroup.userData.foodItems.push(food);

@@ -132,11 +132,11 @@ export const CAT_CONFIG = {
 // Food Configuration
 export const FOOD_CONFIG = {
     types: {
-        BASIC: {
-            name: 'Basic Cat Food',
+        FISH: {
+            name: 'Fish Cat Food',
             color: {
-                package: 0x8B4513,
-                content: 0xCD853F
+                package: 0x3A5FCD,
+                content: 0x6EC6FF
             },
             nutrition: 30,
             model: {
@@ -145,11 +145,11 @@ export const FOOD_CONFIG = {
                 depth: 0.15
             }
         },
-        PREMIUM: {
-            name: 'Premium Cat Food',
+        CHICKEN: {
+            name: 'Chicken Cat Food',
             color: {
                 package: 0xFFD700,
-                content: 0xFFA500
+                content: 0xFFF176
             },
             nutrition: 50,
             model: {

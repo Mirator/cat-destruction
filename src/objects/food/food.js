@@ -1,34 +1,6 @@
 import * as THREE from 'three';
 import { Highlightable } from '../props/Highlightable.js';
-
-export const FOOD_TYPES = {
-    BASIC: {
-        name: 'Basic Cat Food',
-        color: {
-            package: 0x8B4513,  // Brown package
-            content: 0xCD853F   // Lighter brown content
-        },
-        nutrition: 30,
-        model: {
-            width: 0.15,
-            height: 0.1,
-            depth: 0.15
-        }
-    },
-    PREMIUM: {
-        name: 'Premium Cat Food',
-        color: {
-            package: 0xFFD700,  // Gold package
-            content: 0xFFA500   // Orange content
-        },
-        nutrition: 50,
-        model: {
-            width: 0.15,
-            height: 0.12,
-            depth: 0.15
-        }
-    }
-};
+import { FOOD_CONFIG } from '../../config/GameConfig.js';
 
 export const INTERACTION_CONFIG = {
     pickupRange: 1.1,     // Maximum distance for pickup (1.1 meters)
@@ -40,7 +12,7 @@ export const INTERACTION_CONFIG = {
 
 export class Food extends Highlightable {
     constructor(type, position) {
-        const config = FOOD_TYPES[type];
+        const config = FOOD_CONFIG.types[type];
         // Can dimensions
         const radius = config.model.width / 2;
         const height = config.model.height;
@@ -167,7 +139,7 @@ export class Food extends Highlightable {
         if (this.isConsumed || this.isPickedUp) return 0;
         
         this.isConsumed = true;
-        const nutrition = FOOD_TYPES[this.type].nutrition;
+        const nutrition = FOOD_CONFIG.types[this.type].nutrition;
         
         // Make the food invisible when consumed
         this.model.visible = false;
@@ -221,7 +193,7 @@ export class Food extends Highlightable {
         const z = shelfPosition.z + 0.1; // Slightly forward on the shelf
         
         // Random food type
-        const type = Math.random() < 0.7 ? 'BASIC' : 'PREMIUM';
+        const type = Math.random() < 0.7 ? 'FISH' : 'CHICKEN';
         
         return new Food(type, new THREE.Vector3(x, y, z));
     }
@@ -278,6 +250,6 @@ export class Food extends Highlightable {
     }
 
     getName() {
-        return FOOD_TYPES[this.type].name;
+        return FOOD_CONFIG.types[this.type].name;
     }
 }
