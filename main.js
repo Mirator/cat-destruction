@@ -10,6 +10,7 @@ import { StartScreen } from './src/ui/StartScreen.js';
 import { DialingUI } from './src/ui/dialing-ui.js';
 import { ROOM_DIMENSIONS } from './src/config/RoomConfig.js';
 import { ScoreManager } from './src/state/ScoreManager.js';
+import audioManager from './src/audio/AudioManager.js';
 
 // Initialize the scene
 const { scene, camera, renderer } = createScene();
@@ -79,6 +80,9 @@ const startScreen = new StartScreen(() => {
 });
 
 startScreen.show();
+
+// Load meow sound asset
+await audioManager.loadSound('cat_meow', 'assets/sounds/Mnau.wav');
 
 // Animation loop
 function animate() {

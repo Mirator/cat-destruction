@@ -5,6 +5,8 @@ import { CatState } from '../../state/CatState.js';
 import { CatAnimator } from './CatAnimator.js';
 import { CatUIManager } from './CatUIManager.js';
 import { CatBehavior } from './CatBehavior.js';
+import audioManager from '../../audio/AudioManager.js';
+import { UI_CONFIG } from '../../config/GameConfig.js';
 
 export class Cat {
     constructor(scene, initialPosition = new THREE.Vector3(0, 0, 0), playerState = null) {
@@ -525,10 +527,11 @@ export class Cat {
         });
     }
 
-    meowIfHungry() {
+    meowIfAngry() {
         const now = Date.now();
         const animation = this.state.animation;
-        if (now - animation.lastMeow > 5000) {
+        // Use UI_CONFIG.statusBar.thresholds.angry for the anger threshold
+        if (this.state.anger >= UI_CONFIG.statusBar.thresholds.angry && now - animation.lastMeow > 5000) {
             this.playMeowSound();
             this.state.updateAnimation({
                 lastMeow: now,
@@ -539,42 +542,7 @@ export class Cat {
     }
 
     playMeowSound() {
-        if (!this.audioReady) return;
-        if (!this.audioContext) {
-            try {
-                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            } catch (e) {
-                // Could not create audio context, skip sound
-                return;
-            }
-        }
-        if (!this.audioContext) return;
-        // Resume audio context if it was suspended
-        if (this.audioContext.state === 'suspended') {
-            this.audioContext.resume();
-        }
-
-        // Create oscillator
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
-        
-        // Connect nodes
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
-        
-        // Configure sound
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime);
-        oscillator.frequency.linearRampToValueAtTime(600, this.audioContext.currentTime + 0.2);
-        
-        // Configure volume envelope
-        gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.3, this.audioContext.currentTime + 0.05);
-        gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + 0.3);
-        
-        // Play sound
-        oscillator.start();
-        oscillator.stop(this.audioContext.currentTime + 0.3);
+        audioManager.playMeow();
     }
 
     eat(bowl) {

@@ -158,7 +158,7 @@ export class CatBehavior {
                     this.cat.moveTowardsBowl(nearestBowl);
                 } else {
                     this.state.setActivity(ACTIVITY_TYPES.SEARCHING_FOOD);
-                    this.cat.meowIfHungry();
+                    this.cat.meowIfAngry();
                 }
             }
         }
