@@ -363,7 +363,67 @@ export class Room {
                 this.group.add(wallPhone.model);
                 if (item.unique) Room.uniqueObjectsCreated.add(item.type);
             } else if (item.type === 'door') {
-                // TODO: Add door creation logic here, using item.position or default
+                // Simple visible door for outside wall
+                // Only add if this wall is an outside wall (no neighbor)
+                const wallDirs = ['north', 'south', 'east', 'west'];
+                for (const dir of wallDirs) {
+                    const hasNeighbor = this.neighbors[dir] && this.neighbors[dir].room;
+                    if (!hasNeighbor) {
+                        // Place door at center of this wall
+                        // Door dimensions
+                        const doorWidth = 0.9;
+                        const doorHeight = 2.1;
+                        // Create door texture
+                        function createDoorTexture() {
+                            const size = 128;
+                            const canvas = document.createElement('canvas');
+                            canvas.width = size;
+                            canvas.height = size * 2;
+                            const ctx = canvas.getContext('2d');
+                            ctx.fillStyle = '#bfa16a';
+                            ctx.fillRect(0, 0, size, size * 2);
+                            ctx.strokeStyle = '#8a6a3a';
+                            ctx.lineWidth = 6;
+                            ctx.strokeRect(10, 10, size - 20, size * 2 - 20);
+                            ctx.lineWidth = 3;
+                            ctx.strokeRect(25, 25, size - 50, size - 40);
+                            ctx.strokeRect(25, size + 15, size - 50, size - 40);
+                            ctx.beginPath();
+                            ctx.arc(size - 25, size, 7, 0, 2 * Math.PI);
+                            ctx.fillStyle = '#e2c290';
+                            ctx.fill();
+                            ctx.font = 'bold 20px sans-serif';
+                            ctx.fillStyle = '#6a4a1a';
+                            ctx.fillText('DOOR', 30, size + 10);
+                            return new THREE.CanvasTexture(canvas);
+                        }
+                        const doorTexture = createDoorTexture();
+                        const doorMaterial = new THREE.MeshStandardMaterial({ map: doorTexture, roughness: 0.5, metalness: 0.1 });
+                        const doorGeo = new THREE.PlaneGeometry(doorWidth, doorHeight);
+                        const doorMesh = new THREE.Mesh(doorGeo, doorMaterial);
+                        // Position door at center of wall, just inside room
+                        const offset = 0.06; // further inside for visibility
+                        if (dir === 'north') {
+                            doorMesh.position.set(0, doorHeight/2, this.dimensions.length/2 - offset);
+                            doorMesh.rotation.y = Math.PI;
+                        } else if (dir === 'south') {
+                            doorMesh.position.set(0, doorHeight/2, -this.dimensions.length/2 + offset);
+                            doorMesh.rotation.y = 0;
+                        } else if (dir === 'east') {
+                            doorMesh.position.set(this.dimensions.width/2 - offset, doorHeight/2, 0);
+                            doorMesh.rotation.y = -Math.PI/2;
+                        } else if (dir === 'west') {
+                            doorMesh.position.set(-this.dimensions.width/2 + offset, doorHeight/2, 0);
+                            doorMesh.rotation.y = Math.PI/2;
+                        }
+                        doorMesh.renderOrder = 1000; // always in front
+                        doorMesh.name = 'simpleDoor';
+                        // Optional: add a black outline for extra pop
+                        // (skip for now, but can add if you want)
+                        this.group.add(doorMesh);
+                        break; // Only one door per wall
+                    }
+                }
                 if (item.unique) Room.uniqueObjectsCreated.add(item.type);
             } else if (item.type === 'shelf') {
                 // TODO: Add shelf creation logic here, using item.position or default

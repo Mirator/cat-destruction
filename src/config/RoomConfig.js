@@ -20,6 +20,7 @@ export const SHARED_WALL_THICKNESS = 0.2;
 
 export const ROOM_CONFIGS = {
   mainRoom: {
+    parcelRoom: true,
     wallProps: [
       { type: 'telephone', unique: true },
       { type: 'door', unique: true },

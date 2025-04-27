@@ -3,6 +3,7 @@ import { Room } from '../objects/room/Room.js';
 import { Food } from '../objects/food/food.js';
 import { createParquetTexture, createDynamicWallTexture, createCeilingTexture, createWallMaterial, createWall, createRoom, createSharedWall } from '../objects/room/roomUtils.js';
 import { ROOM_DIMENSIONS, ROOM_CONFIGS, SHARED_WALL_THICKNESS } from '../config/RoomConfig.js';
+import { Parcel } from '../objects/props/parcel.js';
 
 /**
  * Manages rooms, connections between rooms, and shared walls
@@ -298,6 +299,73 @@ export function createScene() {
 
     // Add the roomManager to the scene's userData for access elsewhere
     scene.userData.roomManager = roomManager;
+
+    // --- SPAWN PARCEL AT DOOR LOGIC ---
+    scene.userData.spawnParcelAtDoor = function() {
+        // Remove any existing parcel
+        scene.traverse(obj => {
+            if (obj.userData && obj.userData.parcelInstance) {
+                scene.remove(obj);
+            }
+        });
+
+        // Find parcel room (by config)
+        let parcelRoom = null;
+        for (const room of roomManager.rooms.values()) {
+            if (room.config && room.config.parcelRoom) {
+                parcelRoom = room;
+                break;
+            }
+        }
+        if (!parcelRoom) {
+            parcelRoom = roomManager.getRoom('room1') || Array.from(roomManager.rooms.values())[0];
+        }
+        if (!parcelRoom) {
+            console.warn('No parcel room found');
+            return;
+        }
+
+        // Find the door mesh in the parcel room
+        let doorMesh = null;
+        parcelRoom.group.traverse(obj => {
+            if (obj.name === 'simpleDoor') {
+                doorMesh = obj;
+            }
+        });
+        if (!doorMesh) {
+            console.warn('No door mesh found in parcel room');
+            return;
+        }
+        // Place parcel just inside the room, based on door wall direction
+        const doorPos = new THREE.Vector3();
+        doorMesh.getWorldPosition(doorPos);
+        // Determine which wall the door is on by comparing doorPos to room center
+        const roomCenter = parcelRoom.position;
+        const dx = doorPos.x - roomCenter.x;
+        const dz = doorPos.z - roomCenter.z;
+        const offset = 0.7; // meters inside the room
+        let parcelPos = doorPos.clone();
+        // North wall (front): z much greater than center
+        if (Math.abs(dz) > Math.abs(dx) && dz > 0) {
+            parcelPos.z -= offset;
+        // South wall (back): z much less than center
+        } else if (Math.abs(dz) > Math.abs(dx) && dz < 0) {
+            parcelPos.z += offset;
+        // East wall (right): x much greater than center
+        } else if (Math.abs(dx) > Math.abs(dz) && dx > 0) {
+            parcelPos.x -= offset;
+        // West wall (left): x much less than center
+        } else if (Math.abs(dx) > Math.abs(dz) && dx < 0) {
+            parcelPos.x += offset;
+        }
+        parcelPos.y = 0.15;
+        console.log('DOOR POS', doorPos);
+        console.log('ROOM CENTER', roomCenter);
+        console.log('PARCEL POS', parcelPos);
+        // Spawn parcel
+        const parcel = new Parcel(parcelPos);
+        scene.add(parcel.model);
+    };
 
     return { scene, camera, renderer, roomManager };
 }
