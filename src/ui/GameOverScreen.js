@@ -29,6 +29,15 @@ export class GameOverScreen {
         this.message.textContent = 'Game Over';
         this.overlay.appendChild(this.message);
 
+        // Add Press R to restart message
+        this.restartMsg = document.createElement('div');
+        this.restartMsg.textContent = 'Press R to restart';
+        this.restartMsg.style.fontSize = '1.2rem';
+        this.restartMsg.style.opacity = '0.85';
+        this.restartMsg.style.marginTop = '1.2rem';
+        this.restartMsg.style.color = '#ffe066';
+        this.overlay.appendChild(this.restartMsg);
+
         // Cozy time area
         this.timeBox = document.createElement('div');
         this.timeBox.style.background = 'rgba(255,245,200,0.92)';
@@ -116,9 +125,22 @@ export class GameOverScreen {
 
     show() {
         this.overlay.style.display = 'flex';
+        // Add keydown listener for R
+        this._keyListener = (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                this.hide();
+                if (this.onRestart) this.onRestart();
+            }
+        };
+        window.addEventListener('keydown', this._keyListener);
     }
 
     hide() {
         this.overlay.style.display = 'none';
+        // Remove keydown listener if present
+        if (this._keyListener) {
+            window.removeEventListener('keydown', this._keyListener);
+            this._keyListener = null;
+        }
     }
 } 

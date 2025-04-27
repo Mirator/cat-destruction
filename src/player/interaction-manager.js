@@ -383,7 +383,7 @@ export class InteractionManager {
                         if (this.shelf.userData && this.shelf.userData.shelfPositions) {
                             stockShelf(this.shelf, this.shelf.userData.shelfPositions, this.shelf.userData.shelfWidth);
                             Food.setScene(this.scene);
-Fix                             this.collectObjects();
+                            this.collectObjects();
                         } else {
                             // fallback: try to restock anyway
                             stockShelf(this.shelf, [
