@@ -55,7 +55,7 @@ export class StartScreen {
 
         // Game title
         const title = document.createElement('div');
-        title.textContent = 'Cat Destruction';
+        title.textContent = 'Feed me, Fool!';
         title.style.fontSize = '2.5rem';
         title.style.fontWeight = 'bold';
         title.style.marginBottom = '1.1rem';
