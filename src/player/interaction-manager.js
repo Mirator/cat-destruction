@@ -23,6 +23,9 @@ export class InteractionManager {
         this.parcelShouldSpawn = false;
         this.carriedParcel = null;
         this.shelf = null;
+        // Forced help tip logic
+        this.forcedHelpTipUntil = 0;
+        this.forcedHelpTipTimeout = null;
         
         // Configuration
         this.ROOM_BOUNDS = {
@@ -205,6 +208,14 @@ export class InteractionManager {
                 this.player.camera.position,
                 this.player.camera.rotation
             );
+        }
+
+        // Forced help tip: skip normal help tip logic if active
+        if (this.forcedHelpTipUntil > Date.now()) {
+            // Still show forced tip, skip rest of help tip logic
+            this.updateHighlights(deltaTime, null, null);
+            this.ui.updateInteractionPrompt(null, null, false, null, null, null);
+            return;
         }
 
         const nearestFood = !this.carriedFood ? 
@@ -487,5 +498,15 @@ export class InteractionManager {
         this.carriedParcel.model.rotation.y = 0;
         this.ui.hideHelpTip();
         this.carriedParcel = null;
+    }
+
+    showForcedHelpTip(text, durationMs = 6000) {
+        this.forcedHelpTipUntil = Date.now() + durationMs;
+        this.ui.showHelpTip(text);
+        if (this.forcedHelpTipTimeout) clearTimeout(this.forcedHelpTipTimeout);
+        this.forcedHelpTipTimeout = setTimeout(() => {
+            this.forcedHelpTipUntil = 0;
+            this.ui.hideHelpTip();
+        }, durationMs);
     }
 } 

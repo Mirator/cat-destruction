@@ -79,6 +79,8 @@ const startScreen = new StartScreen(() => {
     gameStarted = true;
     lastTime = performance.now();
     scoreManager.start();
+    // Show helper tooltip for 5 seconds using forced tip
+    interactionManager.showForcedHelpTip('Find food in the shelf', 5000);
     animate();
 });
 
