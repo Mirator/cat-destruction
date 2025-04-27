@@ -8,6 +8,7 @@ import { PlayerStatusBar } from './src/ui/playerStatusBar.js';
 import { GameOverScreen } from './src/ui/GameOverScreen.js';
 import { StartScreen } from './src/ui/StartScreen.js';
 import { DialingUI } from './src/ui/dialing-ui.js';
+import { ROOM_DIMENSIONS } from './src/config/RoomConfig.js';
 
 // Initialize the scene
 const { scene, camera, renderer } = createScene();
@@ -53,8 +54,13 @@ const playerController = new PlayerController(camera, renderer.domElement);
 const interactionManager = new InteractionManager(scene, playerController);
 scene.userData.interactionManager = interactionManager;
 
+// --- Cat spawn position to match bed/camera setup ---
+const bedDepth = 2.1;
+const bedZ = -ROOM_DIMENSIONS.length/2 + bedDepth/2 + 0.1;
+const catStartX = ROOM_DIMENSIONS.width - 0.3;
+const catStartZ = bedZ;
 // Initialize cat
-const cat = new Cat(scene, new THREE.Vector3(0, 0, -2), playerState); // Pass playerState
+const cat = new Cat(scene, new THREE.Vector3(catStartX, 0, catStartZ), playerState); // Pass playerState
 
 // Time tracking for smooth movement
 let lastTime = performance.now();

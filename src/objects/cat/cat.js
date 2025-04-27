@@ -48,7 +48,7 @@ export class Cat {
 
         this.behavior = new CatBehavior(this, playerState);
         this.blockedFrames = 0;
-        this.tempWaypoint = null;
+        this.waypoints = [];
     }
 
     _setupAudioContextOnUserGesture() {
@@ -273,7 +273,8 @@ export class Cat {
                 object.name.includes('table') ||
                 object.name.includes('chair') ||
                 object.name.includes('shelf') ||
-                object.name.includes('wall')
+                (object.name.includes('wall') && !this._isAtHole(position, object)) ||
+                object.name.includes('bed')
             )) {
                 collidableObjects.push(object);
             }
@@ -299,10 +300,12 @@ export class Cat {
 
     moveTowards(target, deltaTime) {
         if (!target) return false;
-
-        const toTarget = target.clone().sub(this.position);
+        // If no waypoints or target changed, rebuild waypoints
+        if (!this.waypoints || this.waypoints.length === 0 || !this.waypoints[this.waypoints.length-1].equals(target)) {
+            this.setTargetPosition(target);
+        }
+        const toTarget = this.state.movement.targetPosition ? this.state.movement.targetPosition.clone().sub(this.position) : new THREE.Vector3();
         const distance = toTarget.length();
-        
         if (distance < 0.1) {
             this.state.movement.currentSpeed = Math.max(0, this.state.movement.currentSpeed - CAT_CONFIG.movement.deceleration * deltaTime);
             if (this.state.movement.currentSpeed < CAT_CONFIG.movement.minSpeedThreshold) {
@@ -310,10 +313,23 @@ export class Cat {
                 return true;
             }
         }
-
         this.updateRotation(toTarget, deltaTime);
         this.updateMovement(deltaTime);
+        return false;
+    }
 
+    _moveTowardsBase(target, deltaTime) {
+        const toTarget = target.clone().sub(this.position);
+        const distance = toTarget.length();
+        if (distance < 0.1) {
+            this.state.movement.currentSpeed = Math.max(0, this.state.movement.currentSpeed - CAT_CONFIG.movement.deceleration * deltaTime);
+            if (this.state.movement.currentSpeed < CAT_CONFIG.movement.minSpeedThreshold) {
+                this.state.movement.currentSpeed = 0;
+                return true;
+            }
+        }
+        this.updateRotation(toTarget, deltaTime);
+        this.updateMovement(deltaTime);
         return false;
     }
 
@@ -349,26 +365,29 @@ export class Cat {
     }
 
     updateMovement(deltaTime) {
-        // Reset collision log flag at the start of each frame
         window._catCollisionLoggedThisFrame = false;
-        // Only move if facing the target closely enough
         const angleDiff = Math.abs(this.state.movement.targetAngle - this.state.movement.facingAngle);
         if (angleDiff > 0.3) {
             this.state.movement.currentSpeed = 0;
             return;
         }
-        // Use tempWaypoint if set
-        let targetPos = this.tempWaypoint || this.state.movement.targetPosition;
+        // Use waypoints if present
+        let targetPos = (this.waypoints && this.waypoints.length > 0) ? this.waypoints[0] : this.state.movement.targetPosition;
         if (!targetPos) return;
         const toTarget = targetPos.clone().sub(this.position);
         const distance = toTarget.length();
         if (distance < 0.15) {
-            if (this.tempWaypoint) {
-                // Arrived at waypoint, clear it
-                this.tempWaypoint = null;
-                this.blockedFrames = 0;
-                return;
+            // Arrived at this waypoint
+            if (this.waypoints && this.waypoints.length > 0) {
+                this.waypoints.shift();
+                if (this.waypoints.length > 0) {
+                    this.state.movement.targetPosition = this.waypoints[0];
+                } else {
+                    this.state.movement.targetPosition = null;
+                }
             }
+            this.blockedFrames = 0;
+            return;
         }
         if (this.state.movement.currentSpeed > 0) {
             const movement = new THREE.Vector3(
@@ -380,12 +399,13 @@ export class Cat {
             const collisionCheck = this.checkCollision(nextPosition, movement.normalize());
             if (collisionCheck.collision) {
                 this.blockedFrames++;
-                if (this.blockedFrames > 20 && !this.tempWaypoint) {
+                if (this.blockedFrames > 20 && (!this.waypoints || this.waypoints.length <= 1)) {
                     // Pick a random waypoint near the target
                     const angle = Math.random() * Math.PI * 2;
                     const radius = 0.5 + Math.random() * 0.5;
                     const offset = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle)).multiplyScalar(radius);
-                    this.tempWaypoint = targetPos.clone().add(offset);
+                    this.waypoints = [targetPos.clone().add(offset)];
+                    this.state.movement.targetPosition = this.waypoints[0];
                     this.blockedFrames = 0;
                     return;
                 }
@@ -604,5 +624,96 @@ export class Cat {
 
     onBowlFilled(bowl) {
         this.knownBowlsWithFood.add(bowl.id);
+    }
+
+    // Helper: Determine which room the cat is in
+    getCurrentRoom() {
+        if (!this.scene.userData.roomManager) return null;
+        const roomManager = this.scene.userData.roomManager;
+        // Assume only two rooms for now
+        const room1 = roomManager.getRoom('room1');
+        const room2 = roomManager.getRoom('room2');
+        if (!room1 || !room2) return null;
+        // Room boundaries
+        const r1min = room1.position.x - CAT_CONFIG.room.width/2;
+        const r1max = room1.position.x + CAT_CONFIG.room.width/2;
+        const r2min = room2.position.x - CAT_CONFIG.room.width/2;
+        const r2max = room2.position.x + CAT_CONFIG.room.width/2;
+        if (this.position.x >= r1min && this.position.x < r1max) return room1;
+        if (this.position.x >= r2min && this.position.x < r2max) return room2;
+        return null;
+    }
+
+    // Helper: Get the center of the shared wall hole
+    getSharedWallHoleCenter() {
+        const roomManager = this.scene.userData.roomManager;
+        if (!roomManager) return new THREE.Vector3(0, 0, 0);
+        const room1 = roomManager.getRoom('room1');
+        const room2 = roomManager.getRoom('room2');
+        if (!room1 || !room2) return new THREE.Vector3(0, 0, 0);
+        const wallX = (room1.position.x + room2.position.x) / 2;
+        const wallZ = 0;
+        return new THREE.Vector3(wallX, 0, wallZ);
+    }
+
+    // Helper: Check if two positions are in different rooms
+    arePositionsInDifferentRooms(posA, posB) {
+        const roomManager = this.scene.userData.roomManager;
+        if (!roomManager) return false;
+        const room1 = roomManager.getRoom('room1');
+        const room2 = roomManager.getRoom('room2');
+        if (!room1 || !room2) return false;
+        const r1min = room1.position.x - CAT_CONFIG.room.width/2;
+        const r1max = room1.position.x + CAT_CONFIG.room.width/2;
+        const r2min = room2.position.x - CAT_CONFIG.room.width/2;
+        const r2max = room2.position.x + CAT_CONFIG.room.width/2;
+        const inRoom1A = posA.x >= r1min && posA.x < r1max;
+        const inRoom2A = posA.x >= r2min && posA.x < r2max;
+        const inRoom1B = posB.x >= r1min && posB.x < r1max;
+        const inRoom2B = posB.x >= r2min && posB.x < r2max;
+        return (inRoom1A && inRoom2B) || (inRoom2A && inRoom1B);
+    }
+
+    // When a new target is set, build the waypoints
+    setTargetPosition(target) {
+        // If already at target, do nothing
+        if (this.position.distanceTo(target) < 0.1) return;
+        // If changing rooms, go to hole first, then to target
+        if (this.arePositionsInDifferentRooms(this.position, target)) {
+            this.waypoints = [this.getSharedWallHoleCenter(), target.clone()];
+        } else {
+            this.waypoints = [target.clone()];
+        }
+        // Set the first as the current target
+        this.state.movement.targetPosition = this.waypoints[0];
+    }
+
+    // Helper: check if position is at the hole in the wall
+    _isAtHole(position, wallObject) {
+        // Only for the shared wall
+        if (!wallObject.name.includes('sharedWall')) return false;
+        // Get wall and passage info
+        const roomManager = this.scene.userData.roomManager;
+        if (!roomManager) return false;
+        const room1 = roomManager.getRoom('room1');
+        const room2 = roomManager.getRoom('room2');
+        if (!room1 || !room2) return false;
+        // Wall is at x = (room1.x + room2.x)/2, z = 0
+        const wallX = (room1.position.x + room2.position.x) / 2;
+        const wallZ = 0;
+        // Passage info: get from room1's neighbor connection
+        let passageWidth = 1.2;
+        let passageHeight = 2.2;
+        if (room1.neighbors && room1.neighbors.east && room1.neighbors.east.passage) {
+            passageWidth = room1.neighbors.east.passage.width || passageWidth;
+            passageHeight = room1.neighbors.east.passage.height || passageHeight;
+        }
+        // Check if position is within the passage bounds (centered at wallX, wallZ)
+        const dx = Math.abs(position.x - wallX);
+        const dz = Math.abs(position.z - wallZ);
+        // Only allow if within passage width (z) and close to wall (x)
+        const withinZ = dz < passageWidth / 2;
+        const closeToWall = dx < 0.12; // allow a small margin for wall thickness
+        return withinZ && closeToWall;
     }
 }

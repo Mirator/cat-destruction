@@ -271,9 +271,23 @@ export function createScene() {
         createSharedWall: true
     });
     
-    // Set initial camera position - positioned to look at the boundary
-    camera.position.set(3, 1.7, 3); // Positioned to see both rooms
-    camera.lookAt(ROOM_DIMENSIONS.width/2, 1.0, 0);
+    // Set initial camera position - positioned to look at the bed in the sleeping room
+    // Bed is at (0, 0, -roomLength/2 + bed.depth/2 + 0.1) in room2
+    const bedDepth = 2.1; // from FURNITURE_DIMENSIONS.bed.depth
+    const bedZ = -ROOM_DIMENSIONS.length/2 + bedDepth/2 + 0.1;
+    // Place player (camera) near the foot of the bed, slightly to the right
+    camera.position.set(ROOM_DIMENSIONS.width + 0.7, 1.7, bedZ + bedDepth/2 + 0.5);
+    // Place cat on the bed, slightly left of center
+    const catStartX = ROOM_DIMENSIONS.width - 0.3;
+    const catStartZ = bedZ;
+    // Look at a point between the cat and the bed center
+    camera.lookAt(ROOM_DIMENSIONS.width, 1.0, bedZ);
+    // Store camera for cat attack logic
+    scene.userData.playerCamera = camera;
+    // --- Place the cat in the scene ---
+    // If you have a cat spawn here, set its position to (catStartX, 0, catStartZ)
+    // Example: if you instantiate the cat here, pass this as initialPosition
+    // (You may need to update your cat instantiation code to use this position)
 
     // Handle window resize
     window.addEventListener('resize', () => {

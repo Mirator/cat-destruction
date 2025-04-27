@@ -31,6 +31,15 @@ const FURNITURE_DIMENSIONS = {
         depth: 0.3,
         shelfThickness: 0.03,
         shelfCount: 4
+    },
+    bed: {
+        width: 1.6,
+        height: 0.5,
+        depth: 2.1,
+        mattressHeight: 0.25,
+        pillowWidth: 0.5,
+        pillowHeight: 0.12,
+        pillowDepth: 0.3
     }
 };
 
@@ -214,6 +223,83 @@ function createShelvingUnit() {
     return shelfGroup;
 }
 
+function createBed() {
+    const bedGroup = new THREE.Group();
+    bedGroup.name = 'bed';
+    const dims = FURNITURE_DIMENSIONS.bed;
+    // Bed frame
+    const frameMaterial = createWoodMaterial();
+    const frameGeometry = new THREE.BoxGeometry(dims.width, 0.12, dims.depth);
+    const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+    frame.position.y = 0.12/2 + 0.18; // raised for legs
+    frame.castShadow = true;
+    frame.receiveShadow = true;
+    bedGroup.add(frame);
+    // Mattress
+    const mattressMaterial = new THREE.MeshStandardMaterial({ color: 0xfaf7f0, roughness: 0.6 });
+    const mattressGeometry = new THREE.BoxGeometry(dims.width * 0.96, dims.mattressHeight, dims.depth * 0.96);
+    const mattress = new THREE.Mesh(mattressGeometry, mattressMaterial);
+    mattress.position.y = 0.12 + dims.mattressHeight / 2 + 0.18; // on top of frame
+    mattress.castShadow = true;
+    mattress.receiveShadow = true;
+    bedGroup.add(mattress);
+    // Blanket (blue, slightly offset, covers most of mattress)
+    const blanketMaterial = new THREE.MeshStandardMaterial({ color: 0x4a90e2, roughness: 0.5 });
+    const blanketWidth = dims.width * 0.90;
+    const blanketDepth = dims.depth * 0.80;
+    const blanketHeight = dims.mattressHeight * 0.55;
+    const blanketGeometry = new THREE.BoxGeometry(blanketWidth, blanketHeight, blanketDepth);
+    // Center the blanket on the mattress, with a stronger offset toward the foot, but not past the footboard
+    const blanketZ = -dims.depth/2 + blanketDepth/2 + 0.3; // increased from 0.18 to 0.38 for more offset
+    const blanket = new THREE.Mesh(blanketGeometry, blanketMaterial);
+    blanket.position.set(0, 0.12 + dims.mattressHeight + blanketHeight/2 + 0.18 - 0.03, blanketZ);
+    blanket.castShadow = true;
+    blanket.receiveShadow = true;
+    bedGroup.add(blanket);
+    // Pillows (two, white)
+    const pillowMaterial = new THREE.MeshStandardMaterial({ color: 0xf6f6f6, roughness: 0.4 });
+    const pillowGeometry = new THREE.BoxGeometry(dims.pillowWidth * 0.9, dims.pillowHeight, dims.pillowDepth * 0.9);
+    const pillow1 = new THREE.Mesh(pillowGeometry, pillowMaterial);
+    pillow1.position.set(-0.28, 0.12 + dims.mattressHeight + dims.pillowHeight / 2 + 0.18, -dims.depth / 2 + dims.pillowDepth / 2 + 0.07);
+    pillow1.castShadow = true;
+    pillow1.receiveShadow = true;
+    bedGroup.add(pillow1);
+    const pillow2 = new THREE.Mesh(pillowGeometry, pillowMaterial);
+    pillow2.position.set(0.28, 0.12 + dims.mattressHeight + dims.pillowHeight / 2 + 0.18, -dims.depth / 2 + dims.pillowDepth / 2 + 0.07);
+    pillow2.castShadow = true;
+    pillow2.receiveShadow = true;
+    bedGroup.add(pillow2);
+    // Headboard
+    const headboardGeometry = new THREE.BoxGeometry(dims.width, 0.4, 0.08);
+    const headboard = new THREE.Mesh(headboardGeometry, frameMaterial);
+    headboard.position.set(0, 0.12 + 0.2 + 0.18, -dims.depth / 2 + 0.04);
+    headboard.castShadow = true;
+    headboard.receiveShadow = true;
+    bedGroup.add(headboard);
+    // Footboard (smaller)
+    const footboardGeometry = new THREE.BoxGeometry(dims.width, 0.22, 0.07);
+    const footboard = new THREE.Mesh(footboardGeometry, frameMaterial);
+    footboard.position.set(0, 0.12 + 0.11 + 0.18, dims.depth / 2 - 0.035);
+    footboard.castShadow = true;
+    footboard.receiveShadow = true;
+    bedGroup.add(footboard);
+    // Legs (4)
+    const legGeometry = new THREE.BoxGeometry(0.09, 0.18, 0.09);
+    const legY = 0.09;
+    const legX = dims.width / 2 - 0.09 / 2;
+    const legZ = dims.depth / 2 - 0.09 / 2;
+    for (const sx of [-1, 1]) {
+        for (const sz of [-1, 1]) {
+            const leg = new THREE.Mesh(legGeometry, frameMaterial);
+            leg.position.set(sx * legX, legY, sz * legZ);
+            leg.castShadow = true;
+            leg.receiveShadow = true;
+            bedGroup.add(leg);
+        }
+    }
+    return bedGroup;
+}
+
 // Room layout configuration
 const ROOM_LAYOUT = {
     chairSpacing: {
@@ -306,6 +392,16 @@ export function createFurniture(roomWidth, roomLength) {
     placedObjects.push({
         pos: shelfPos,
         size: { width: FURNITURE_DIMENSIONS.shelf.width, depth: FURNITURE_DIMENSIONS.shelf.depth }
+    });
+    
+    // Create and position bed (for sleeping room)
+    const bed = createBed();
+    // Place bed against the back wall, centered
+    bed.position.set(0, 0, -roomLength/2 + FURNITURE_DIMENSIONS.bed.depth/2 + 0.1);
+    furniture.push(bed);
+    placedObjects.push({
+        pos: { x: 0, z: -roomLength/2 + FURNITURE_DIMENSIONS.bed.depth/2 + 0.1 },
+        size: { width: FURNITURE_DIMENSIONS.bed.width, depth: FURNITURE_DIMENSIONS.bed.depth }
     });
     
     // Create and position bowl, retrying if overlap
