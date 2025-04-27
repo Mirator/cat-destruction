@@ -359,9 +359,6 @@ export function createScene() {
             parcelPos.x += offset;
         }
         parcelPos.y = 0.15;
-        console.log('DOOR POS', doorPos);
-        console.log('ROOM CENTER', roomCenter);
-        console.log('PARCEL POS', parcelPos);
         // Spawn parcel
         const parcel = new Parcel(parcelPos);
         scene.add(parcel.model);
