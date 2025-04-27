@@ -353,7 +353,6 @@ export class InteractionManager {
             if (this.carriedFood) {
                 // Remove dropping food: only allow placing in bowl
                 if (this.tryPlaceInBowl()) {
-                    console.log('[DEBUG] Placed food in bowl. About to consume:', this.carriedFood);
                     // Check if this was the last can of its type (after placing in bowl)
                     const type = this.carriedFood.type;
                     this.carriedFood.consume();
@@ -363,12 +362,9 @@ export class InteractionManager {
                     // Defer the check for remaining cans to ensure state is updated
                     setTimeout(() => {
                         const remainingOfType = this.foodItems.filter(f => !f.isConsumed && !f.isPickedUp && !f.inBowl && f.type === type);
-                        console.log('[DEBUG] Checking remaining cans of type', type, 'remaining:', remainingOfType.length, remainingOfType);
                         if (remainingOfType.length === 0) {
-                            console.log('[DEBUG] Out of cans of type', type, '- showing help tip');
                             this.ui.showHelpTip('Out of ' + (type === 'FISH' ? 'Fish' : 'Chicken') + ' cans! Use the telephone to restock.', true);
                         } else {
-                            console.log('[DEBUG] Still have cans of type', type, '- hiding help tip');
                             this.ui.hideHelpTip(); // Hide help tip after filling bowl
                         }
                     }, 0);
@@ -386,6 +382,8 @@ export class InteractionManager {
                         // Restock shelf
                         if (this.shelf.userData && this.shelf.userData.shelfPositions) {
                             stockShelf(this.shelf, this.shelf.userData.shelfPositions, this.shelf.userData.shelfWidth);
+                            Food.setScene(this.scene);
+Fix                             this.collectObjects();
                         } else {
                             // fallback: try to restock anyway
                             stockShelf(this.shelf, [
@@ -394,6 +392,8 @@ export class InteractionManager {
                                 {x:0,y:0.975,z:0},
                                 {x:0,y:1.425,z:0}
                             ], 1.2);
+                            Food.setScene(this.scene);
+                            this.collectObjects();
                         }
                         this.shelf.setHighlight(false);
                         this.ui.hidePrompt();
@@ -419,11 +419,6 @@ export class InteractionManager {
         if (nearestFood && !nearestFood.isConsumed && !nearestFood.isPickedUp) {
             if (nearestFood.pickup()) {
                 this.carriedFood = nearestFood;
-                // Check if this was the last can of its type
-                const remainingOfType = this.foodItems.filter(f => !f.isConsumed && !f.isPickedUp && f.type === nearestFood.type);
-                if (remainingOfType.length === 0) {
-                    this.ui.showHelpTip('Out of ' + (nearestFood.type === 'FISH' ? 'Fish' : 'Chicken') + ' cans! Use the telephone to restock.');
-                }
             }
         }
     }
@@ -461,8 +456,6 @@ export class InteractionManager {
                 this.dialingActive = false;
                 if (this.scene && this.scene.userData && typeof this.scene.userData.spawnParcelAtDoor === 'function') {
                     this.scene.userData.spawnParcelAtDoor();
-                } else {
-                    console.warn('spawnParcelAtDoor not found on scene.userData');
                 }
             },
             () => { // onCancel

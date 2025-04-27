@@ -546,7 +546,6 @@ export class Cat {
     }
 
     eat(bowl) {
-        console.log('[DEBUG] eat() called. isEating:', this.state.food.isEating, 'bowl.hasFood():', bowl.hasFood(), 'bowl.fill:', bowl.fill, 'bowl.currentFood:', bowl.currentFood);
         if (!this.state.food.isEating && bowl.hasFood()) {
             this.state.food.isEating = true;
             this.state.setActivity(ACTIVITY_TYPES.EATING);
@@ -580,12 +579,9 @@ export class Cat {
             if (wantedType && foodType === wantedType) {
                 cat.state.setFoodPreference(null);
             }
-            console.log('[DEBUG] Starting eat interval');
             const interval = setInterval(() => {
-                console.log('[DEBUG] eat interval tick. isEating:', cat.state.food.isEating, 'bowl.hasFood():', bowl.hasFood(), 'bowl.fill:', bowl.fill, 'bowl.currentFood:', bowl.currentFood);
                 if (!cat.state.food.isEating || !bowl.hasFood()) {
                     clearInterval(interval);
-                    console.log('[DEBUG] Clearing eat interval. isEating:', cat.state.food.isEating, 'bowl.hasFood():', bowl.hasFood(), 'bowl.fill:', bowl.fill, 'bowl.currentFood:', bowl.currentFood);
                     cat.state.food.isEating = false;
                     cat.state.food.targetBowl = null;
                     if (bowl.fill <= 1e-4) {

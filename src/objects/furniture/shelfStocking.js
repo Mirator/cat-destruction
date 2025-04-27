@@ -74,8 +74,7 @@ export function stockShelf(shelfGroup, shelfPositions, shelfWidth) {
             const zRange = shelfDepth / 2 - canRadius - margin;
             const z = basePos.z - zRange + Math.random() * (2 * zRange);
             const pos = { x, y: basePos.y, z };
-            const food = new Food(types[i], new THREE.Vector3(pos.x, pos.y, pos.z));
-            food.model.rotation.set(0, 0, 0);
+            const food = createPickableFood(types[i], pos);
             shelfGroup.userData.foodItems.push(food);
             shelfGroup.add(food.model);
             compartmentCounts[idx]++;
@@ -126,10 +125,19 @@ export function stockShelf(shelfGroup, shelfPositions, shelfWidth) {
         const z = basePos.z - zRange + Math.random() * (2 * zRange);
         const pos = { x, y: basePos.y, z };
         const type = types[i];
-        const food = new Food(type, new THREE.Vector3(pos.x, pos.y, pos.z));
-        food.model.rotation.set(0, 0, 0);
+        const food = createPickableFood(type, pos);
         shelfGroup.userData.foodItems.push(food);
         shelfGroup.add(food.model);
         compartmentCounts[idx]++;
     }
+}
+
+function createPickableFood(type, pos) {
+    const food = new Food(type, new THREE.Vector3(pos.x, pos.y, pos.z));
+    food.model.rotation.set(0, 0, 0);
+    food.isConsumed = false;
+    food.isPickedUp = false;
+    food.inBowl = false;
+    food.model.visible = true;
+    return food;
 } 

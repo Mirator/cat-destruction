@@ -124,7 +124,6 @@ export class Food extends Highlightable {
         group.name = `food_${type.toLowerCase()}`;
         group.castShadow = true;
         group.receiveShadow = true;
-        group.userData.foodInstance = null; // Set after super
         super(group);
         this.type = type;
         this.position = position.clone();
@@ -229,14 +228,13 @@ export class Food extends Highlightable {
 
         const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-        
-        // Find the closest food we can pick up
+
         let closestFood = null;
         let closestDistance = Infinity;
-
         for (const food of foods) {
-            if (food.isConsumed || food.isPickedUp) continue;
-            
+            if (food.isConsumed) continue;
+            if (food.isPickedUp) continue;
+            if (!food.model.visible) continue;
             const intersects = raycaster.intersectObject(food.model, true);
             if (intersects.length > 0 && intersects[0].distance <= INTERACTION_CONFIG.pickupRange) {
                 if (intersects[0].distance < closestDistance) {
@@ -245,7 +243,6 @@ export class Food extends Highlightable {
                 }
             }
         }
-
         return closestFood;
     }
 
