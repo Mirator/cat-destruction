@@ -19,6 +19,24 @@ export class PlayerStatusBar {
         this.container.style.zIndex = '1001';
         this.container.style.fontFamily = 'Arial, sans-serif';
 
+        // Survival time display
+        this.survivalTimeLabel = document.createElement('div');
+        this.survivalTimeLabel.style.color = '#ffe6a0';
+        this.survivalTimeLabel.style.fontSize = '15px';
+        this.survivalTimeLabel.style.fontWeight = 'bold';
+        this.survivalTimeLabel.style.marginBottom = '2px';
+        this.survivalTimeLabel.textContent = 'Survived: 0:00';
+        this.container.appendChild(this.survivalTimeLabel);
+
+        // Best time display
+        this.bestTimeLabel = document.createElement('div');
+        this.bestTimeLabel.style.color = '#ffd700';
+        this.bestTimeLabel.style.fontSize = '13px';
+        this.bestTimeLabel.style.fontWeight = 'bold';
+        this.bestTimeLabel.style.marginBottom = '8px';
+        this.bestTimeLabel.textContent = 'Best: 0:00';
+        this.container.appendChild(this.bestTimeLabel);
+
         // Header
         const header = document.createElement('div');
         header.textContent = 'Player Mood';
@@ -78,5 +96,10 @@ export class PlayerStatusBar {
         this.fillBar.style.width = percent + '%';
         this.fillBar.style.background = percent > 50 ? '#4CAF50' : (percent > 20 ? '#FFA726' : '#F44336');
         this.valueLabel.textContent = `Mood: ${Math.round(health)} / ${maxHealth}`;
+    }
+
+    updateSurvivalTime(current, best) {
+        this.survivalTimeLabel.textContent = `Survived: ${current}`;
+        this.bestTimeLabel.textContent = `Best: ${best}`;
     }
 } 

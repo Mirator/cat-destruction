@@ -9,6 +9,7 @@ import { GameOverScreen } from './src/ui/GameOverScreen.js';
 import { StartScreen } from './src/ui/StartScreen.js';
 import { DialingUI } from './src/ui/dialing-ui.js';
 import { ROOM_DIMENSIONS } from './src/config/RoomConfig.js';
+import { ScoreManager } from './src/state/ScoreManager.js';
 
 // Initialize the scene
 const { scene, camera, renderer } = createScene();
@@ -22,6 +23,8 @@ DialingUI.setRendererDomElement(renderer.domElement);
 const playerState = new PlayerState(100);
 const playerStatusBar = new PlayerStatusBar(playerState);
 
+const scoreManager = new ScoreManager();
+
 let gameOver = false;
 let gameStarted = false;
 
@@ -34,6 +37,9 @@ const gameOverScreen = new GameOverScreen(restartGame);
 playerState.onChange((health) => {
     if (health <= 0 && !gameOver) {
         gameOver = true;
+        scoreManager.stop();
+        scoreManager.saveIfBest();
+        gameOverScreen.setTimes(scoreManager.getFormattedElapsed(), scoreManager.getFormattedBest());
         gameOverScreen.show();
     }
 });
@@ -68,6 +74,7 @@ let lastTime = performance.now();
 const startScreen = new StartScreen(() => {
     gameStarted = true;
     lastTime = performance.now();
+    scoreManager.start();
     animate();
 });
 
@@ -98,6 +105,11 @@ function animate() {
     const dist = catXZ.distanceTo(playerXZ);
     if (dist > 0.5) {
         playerState.changeHealth(1 * deltaTime);
+    }
+
+    // Update timer UI (to be implemented in playerStatusBar)
+    if (playerStatusBar.updateSurvivalTime) {
+        playerStatusBar.updateSurvivalTime(scoreManager.getFormattedElapsed(), scoreManager.getFormattedBest());
     }
 
     // Render the scene

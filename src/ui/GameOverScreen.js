@@ -29,6 +29,22 @@ export class GameOverScreen {
         this.message.textContent = 'Game Over';
         this.overlay.appendChild(this.message);
 
+        // Survival time
+        this.survivalTime = document.createElement('div');
+        this.survivalTime.style.fontSize = '1.3rem';
+        this.survivalTime.style.marginTop = '18px';
+        this.survivalTime.style.color = '#ffe6a0';
+        this.survivalTime.textContent = '';
+        this.overlay.appendChild(this.survivalTime);
+
+        // Best time
+        this.bestTime = document.createElement('div');
+        this.bestTime.style.fontSize = '1.1rem';
+        this.bestTime.style.marginTop = '6px';
+        this.bestTime.style.color = '#ffd700';
+        this.bestTime.textContent = '';
+        this.overlay.appendChild(this.bestTime);
+
         this.restartButton = document.createElement('button');
         this.restartButton.textContent = 'Restart';
         Object.assign(this.restartButton.style, {
@@ -50,6 +66,11 @@ export class GameOverScreen {
         this.overlay.appendChild(this.restartButton);
 
         document.body.appendChild(this.overlay);
+    }
+
+    setTimes(current, best) {
+        this.survivalTime.textContent = `You survived: ${current}`;
+        this.bestTime.textContent = `Best: ${best}`;
     }
 
     show() {
