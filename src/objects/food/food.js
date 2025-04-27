@@ -3,7 +3,7 @@ import { Highlightable } from '../props/Highlightable.js';
 import { FOOD_CONFIG } from '../../config/GameConfig.js';
 
 export const INTERACTION_CONFIG = {
-    pickupRange: 1.1,     // Maximum distance for pickup (1.1 meters)
+    pickupRange: 1.65,     // Maximum distance for pickup (increased by 50% from 1.1 meters)
     hoverHeight: 1.0,     // Height when being carried (at eye level)
     carryOffset: 1.0,     // Forward offset when being carried (1 meter in front)
     highlightColor: 0xFFFFFF,  // Color for interaction highlight
