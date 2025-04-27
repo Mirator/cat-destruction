@@ -264,6 +264,15 @@ export function createScene() {
         config: ROOM_CONFIGS.sleepingRoom
     });
     
+    // --- Randomly spawn the bowl in one of the rooms ---
+    const rooms = [room1, room2];
+    const randomRoom = rooms[Math.floor(Math.random() * rooms.length)];
+    // Add bowl to the chosen room's furniture config if not present
+    if (!randomRoom.config.furniture) randomRoom.config.furniture = [];
+    randomRoom.config.furniture.push({ type: 'bowl' });
+    // Add the bowl to the room (call addFurniture for just the bowl)
+    randomRoom.addFurniture(ROOM_DIMENSIONS.width, ROOM_DIMENSIONS.length);
+    
     // Connect the rooms (this handles wall skipping automatically)
     roomManager.connectRooms('room1', 'room2', 'east', {
         hasPassage: true,
